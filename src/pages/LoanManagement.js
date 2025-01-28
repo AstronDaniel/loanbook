@@ -20,6 +20,10 @@ import {
 } from '@mui/material';
 import { PieChart, Pie, Cell } from 'recharts';
 import { CalendarToday, CreditCard } from 'lucide-react';
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { app } from '../firebase'; // Adjust the path as necessary
+
+const db = getFirestore(app);
 
 const LoanManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,24 +45,47 @@ const LoanManagement = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newLoan = {
       ...formData,
       startDate: new Date().toISOString().split('T')[0],
       dueDate: calculateEndDate(formData.durationMonths),
     };
-    setLoans([...loans, newLoan]);
-    setFormData({
-      customerName: '',
-      phoneNumber: '',
-      loanType: 'Personal',
-      amount: '',
-      interestAmount: '',
-      durationMonths: '',
-      status: 'Active',
-    });
+    try {
+      if (isEditing) {
+        const loanDoc = doc(db, 'loans', currentLoanId);
+        await updateDoc(loanDoc, newLoan);
+        setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...newLoan } : loan));
+      } else {
+        const docRef = await addDoc(collection(db, 'loans'), newLoan);
+        setLoans([...loans, { ...newLoan, id: docRef.id }]);
+      }
+      setFormData({
+        customerName: '',
+        phoneNumber: '',
+        loanType: 'Personal',
+        amount: '',
+        interestAmount: '',
+        durationMonths: '',
+        status: 'Active',
+      });
+      setIsEditing(false);
+      setCurrentLoanId(null);
+    } catch (error) {
+      console.error('Error adding document: ', error);
+    }
   };
+
+  const fetchLoans = async () => {
+    const querySnapshot = await getDocs(collection(db, 'loans'));
+    const loansData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setLoans(loansData);
+  };
+
+  React.useEffect(() => {
+    fetchLoans();
+  }, []);
 
   const calculateEndDate = (durationMonths) => {
     const date = new Date();

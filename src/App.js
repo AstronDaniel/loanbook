@@ -7,6 +7,7 @@ import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import LoanManagement from './pages/LoanManagement';
+import Deptors from './pages/Debtors';
 // import Ledger from './pages/Ledger';
 // import Transactions from './pages/Transactions';
 // import Reports from './pages/Reports';
@@ -22,6 +23,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/loan-management" element={<LoanManagement />} />
+          <Route path="/debtors" element={<Deptors />} />
           {/* <Route path="/ledger" element={<Ledger />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/reports" element={<Reports />} />

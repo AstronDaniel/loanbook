@@ -1,8 +1,19 @@
 // Header.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Menu, Bell, UserCircle, ChevronDown } from 'lucide-react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 const Header = ({ toggleSidebar }) => {
+  const [user, setUser] = useState(null);
+  const auth = getAuth();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
   return (
     <header className="bg-white shadow-sm">
       <div className="flex items-center justify-between p-4">
@@ -18,8 +29,14 @@ const Header = ({ toggleSidebar }) => {
           <div className="flex items-center space-x-2">
             <UserCircle className="h-8 w-8 text-gray-600" />
             <div className="hidden md:block">
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-gray-500">Admin</p>
+              {user ? (
+                <>
+                  <p className="text-sm font-medium">{user.displayName || user.email}</p>
+                  <p className="text-xs text-gray-500">Admin</p>
+                </>
+              ) : (
+                <p className="text-sm font-medium">Loading...</p>
+              )}
             </div>
             <ChevronDown className="h-4 w-4 text-gray-600" />
           </div>

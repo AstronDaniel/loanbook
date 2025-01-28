@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { PieChart, Pie, Cell } from 'recharts';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../firebase'; // Adjust the path as necessary
+
+const db = getFirestore(app);
 
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [recentTransactions, setRecentTransactions] = useState([]);
 
   // Helper function for UGX formatting
   const formatUGX = (amount) => {
@@ -43,11 +48,22 @@ const Dashboard = () => {
     { name: 'Outstanding Loans', value: 3000000 },
   ];
 
-  const recentTransactions = [
-    { id: 1, name: "John Doe", type: "Loan Payment", amount: 500000, date: "2024-01-25", status: "Completed" },
-    { id: 2, name: "Jane Smith", type: "New Loan", amount: 1000000, date: "2024-01-24", status: "Pending" },
-    { id: 3, name: "Mike Johnson", type: "Interest Payment", amount: 150000, date: "2024-01-23", status: "Completed" },
-  ];
+  const fetchRecentTransactions = async () => {
+    const querySnapshot = await getDocs(collection(db, 'transactions'));
+    const transactionsData = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        date: data.date.toDate().toLocaleDateString(), // Convert Firestore timestamp to date string
+      };
+    });
+    setRecentTransactions(transactionsData);
+  };
+
+  useEffect(() => {
+    fetchRecentTransactions();
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);

@@ -8,7 +8,9 @@ import {
   DollarSign,
   BarChart2,
   Settings,
-  LogOut
+  LogOut,
+  PersonStanding
+
 } from 'lucide-react';
 
 const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
@@ -17,7 +19,8 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
 
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'Loans', icon: CreditCard, path: '/loan-management' },
+    { name: 'Add Loan', icon: CreditCard, path: '/loan-management' },
+    {name:'Debtors',icon:PersonStanding,path:'/debtors'},
     { name: 'Ledger', icon: BookOpen, path: '/ledger' },
     { name: 'Transactions', icon: DollarSign, path: '/transactions' },
     { name: 'Reports', icon: BarChart2, path: '/reports' },
