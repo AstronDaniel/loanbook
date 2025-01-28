@@ -13,6 +13,12 @@ const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [stats, setStats] = useState({
+    totalLoans: 0,
+    activeBorrowers: 0,
+    monthlyInterest: 0,
+    duePayments: 0,
+  });
 
   // Helper function for UGX formatting
   const formatUGX = (amount) => {
@@ -23,13 +29,6 @@ const Dashboard = () => {
       maximumFractionDigits: 0,
     }).format(amount);
   };
-
-  const stats = [
-    { title: "Total Loans", value: formatUGX(12500000), icon: Wallet, trend: "+12%" },
-    { title: "Active Borrowers", value: "48", icon: Users, trend: "+4%" },
-    { title: "Monthly Interest", value: formatUGX(890000), icon: TrendingUp, trend: "+2.5%" },
-    { title: "Due Payments", value: formatUGX(12000000), icon: Calendar, trend: "-3%" },
-  ];
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
   
@@ -61,8 +60,26 @@ const Dashboard = () => {
     setRecentTransactions(transactionsData);
   };
 
+  const fetchStats = async () => {
+    const loansSnapshot = await getDocs(collection(db, 'loans'));
+    const loansData = loansSnapshot.docs.map(doc => doc.data());
+
+    const totalLoans = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0);
+    const activeBorrowers = loansData.length;
+    const monthlyInterest = loansData.reduce((sum, loan) => sum + parseInt(loan.interestAmount), 0);
+    const duePayments = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0); // Assuming all loans are due
+
+    setStats({
+      totalLoans,
+      activeBorrowers,
+      monthlyInterest,
+      duePayments,
+    });
+  };
+
   useEffect(() => {
     fetchRecentTransactions();
+    fetchStats();
   }, []);
 
   const toggleSidebar = () => {
@@ -96,22 +113,54 @@ const Dashboard = () => {
         <main className="flex-1 overflow-y-auto p-4">
           {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs md:text-sm text-gray-600">{stat.title}</p>
-                    <p className="text-lg md:text-2xl font-semibold mt-1">{stat.value}</p>
-                  </div>
-                  <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
-                    <stat.icon className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
-                  </div>
+            <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm text-gray-600">Total Loans</p>
+                  <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.totalLoans)}</p>
                 </div>
-                <p className={`text-xs md:text-sm mt-2 ${stat.trend.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.trend} from last month
-                </p>
+                <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                  <Wallet className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                </div>
               </div>
-            ))}
+              <p className="text-xs md:text-sm mt-2 text-green-600">+12% from last month</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm text-gray-600">Active Borrowers</p>
+                  <p className="text-lg md:text-2xl font-semibold mt-1">{stats.activeBorrowers}</p>
+                </div>
+                <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                  <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-xs md:text-sm mt-2 text-green-600">+4% from last month</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm text-gray-600">Monthly Interest</p>
+                  <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.monthlyInterest)}</p>
+                </div>
+                <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                  <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-xs md:text-sm mt-2 text-green-600">+2.5% from last month</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs md:text-sm text-gray-600">Due Payments</p>
+                  <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.duePayments)}</p>
+                </div>
+                <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
+                  <Calendar className="h-5 w-5 md:h-6 md:w-6 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-xs md:text-sm mt-2 text-red-600">-3% from last month</p>
+            </div>
           </div>
 
           {/* Charts Section */}
