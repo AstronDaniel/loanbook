@@ -1,25 +1,22 @@
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import 'tailwindcss/tailwind.css';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
-    <div className="App">
-      <header className="bg-blue-500 text-white p-4">
-        <img src={logo} className="App-logo h-16 w-16" alt="logo" />
-        <p className="text-xl">
-          Hello Loan Book
-        </p>
-        <a
-          className="text-blue-200 hover:text-white"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
