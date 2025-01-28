@@ -6,6 +6,11 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
+import LoanManagement from './pages/LoanManagement';
+// import Ledger from './pages/Ledger';
+// import Transactions from './pages/Transactions';
+// import Reports from './pages/Reports';
+// import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -16,6 +21,11 @@ function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/loan-management" element={<LoanManagement />} />
+          {/* <Route path="/ledger" element={<Ledger />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/settings" element={<Settings />} /> */}
         </Routes>
       </div>
     </Router>

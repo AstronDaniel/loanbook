@@ -39,7 +39,20 @@ LoanBook is designed to streamline loan management, ensure accurate financial tr
    **UI Components**:
    - Table with columns: No, Name, Amount, Interest, Balance, Repayment Date, Aging.
    - Simplified view on mobile: No, Details, Amount, Date, Aging, Total.
+```Details 	Jan-24	Jan-24	Jan-24	Jan-24	Jan-24	Jan-24	Jan-24	Jan-24
+Customer Name	Opening Principal	Principal Advanced 	Part of Principal Paid	Principal Oustanding 	Opening Interest	Interest Charged	Interest Paid	Interest Oustanding 
+Customer 1	 11,500,000 	 -   	 (1,030,000)	 10,470,000 	 -   	 920,000 	 (920,000)	 -   
+Customer 2	 3,000,000 	 -   	 -   	 3,000,000 	 -   	 240,000 	 -   	 240,000 
+Customer 3	 100,000,000 	 10,000,000 	 -   	 110,000,000 	 -   	 5,000,000 	 (5,000,000)	 -   
+Customer 4	 3,000,000 	 -   	 (750,000)	 2,250,000 	 -   	 240,000 	 (240,000)	 -   
+Customer 5	 400,000 	 -   	 -   	 400,000 	 -   	 40,000 	 (40,000)	 -   
+Customer 6	 15,355,000 	 3,000,000 	 (4,065,000)	 14,290,000 	 -   	 1,175,000 	 (275,000)	 900,000 
+Customer 7	 5,000,000 	 -   	 (3,500,000)	 1,500,000 	 -   	 500,000 	 (500,000)	 -   
+Customer 8	 2,916,667 	 -   	 (416,667)	 2,500,000 	 -   	 233,333 	 (233,333)	 -   
+Customer 9	 3,000,000 	 -   	 (2,700,000)	 300,000 	 -   	 300,000 	 (300,000)	 -   
+Customer 10	 7,000,000 	 5,000,000 	 (7,000,000)	 5,000,000 	 -   	 560,000 	 (560,000)	 -   
 
+```
 3. **Balance Sheet**
 
    **Purpose**: Summarize the company's assets, liabilities, and equity.
