@@ -17,6 +17,8 @@ import {
   Grid,
   Alert,
   AlertTitle,
+  CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import { PieChart, Pie, Cell } from 'recharts';
 import { CalendarToday, CreditCard } from 'lucide-react';
@@ -40,6 +42,9 @@ const LoanManagement = () => {
   const [loans, setLoans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -47,6 +52,7 @@ const LoanManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const newLoan = {
       ...formData,
       startDate: new Date().toISOString().split('T')[0],
@@ -57,10 +63,12 @@ const LoanManagement = () => {
         const loanDoc = doc(db, 'loans', currentLoanId);
         await updateDoc(loanDoc, newLoan);
         setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...newLoan } : loan));
+        setSnackbarMessage('Loan updated successfully');
       } else {
         const docRef = await addDoc(collection(db, 'loans'), newLoan);
         setLoans([...loans, { ...newLoan, id: docRef.id }]);
         await addDebtor(newLoan, docRef.id);
+        setSnackbarMessage('Loan added successfully');
       }
       setFormData({
         customerName: '',
@@ -75,6 +83,10 @@ const LoanManagement = () => {
       setCurrentLoanId(null);
     } catch (error) {
       console.error('Error adding document: ', error);
+      setSnackbarMessage('Error adding/updating loan');
+    } finally {
+      setLoading(false);
+      setSnackbarOpen(true);
     }
   };
 
@@ -128,6 +140,10 @@ const LoanManagement = () => {
     });
     setIsEditing(true);
     setCurrentLoanId(loan.id);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   return (
@@ -220,10 +236,11 @@ const LoanManagement = () => {
                   />
                 </Grid>
               </Grid>
-              <Box marginTop={2}>
-                <Button variant="contained" color="primary" type="submit">
+              <Box marginTop={2} display="flex" alignItems="center">
+                <Button variant="contained" color="primary" type="submit" disabled={loading}>
                   {isEditing ? 'Update Loan' : 'Register Loan'}
                 </Button>
+                {loading && <CircularProgress size={24} sx={{ ml: 2 }} />}
               </Box>
             </form>
           </Paper>
@@ -334,6 +351,14 @@ const LoanManagement = () => {
           </Paper>
         </main>
       </div>
+
+      {/* Snackbar for feedback messages */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        message={snackbarMessage}
+      />
     </div>
   );
 };
