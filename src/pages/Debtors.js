@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card, CardContent, Typography, TextField, Select, MenuItem, Grid,
   Button, Box, Chip, InputAdornment, Paper, useTheme, Dialog,
@@ -23,6 +23,10 @@ import {
 } from 'recharts';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../firebase'; // Adjust the path as necessary
+
+const db = getFirestore(app);
 
 const DebtorsDashboard = () => {
   const theme = useTheme();
@@ -37,51 +41,17 @@ const DebtorsDashboard = () => {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(!isMobile);
+  const [debtorsData, setDebtorsData] = useState([]);
 
-  // Sample data
-  const debtorsData = [
-    {
-      id: 1,
-      name: "Customer 1",
-      openingPrincipal: 11500000,
-      principalAdvanced: 2000000,
-      principalPaid: 3030000,
-      principalOutstanding: 10470000,
-      interestOpening: 920000,
-      interestCharged: 180000,
-      interestPaid: 1100000,
-      interestOutstanding: 0,
-      status: "active",
-      history: [
-        { month: 'Jan', principal: 11500000, interest: 920000 },
-        { month: 'Feb', principal: 10800000, interest: 850000 },
-        { month: 'Mar', principal: 10470000, interest: 780000 }
-      ],
-      paymentHistory: [
-        { date: '2024-01-15', amount: 1000000, type: 'Principal' },
-        { date: '2024-02-01', amount: 500000, type: 'Interest' }
-      ]
-    },
-    {
-      id: 2,
-      name: "Customer 2",
-      openingPrincipal: 3000000,
-      principalAdvanced: 0,
-      principalPaid: 0,
-      principalOutstanding: 3000000,
-      interestOpening: 120000,
-      interestCharged: 120000,
-      interestPaid: 0,
-      interestOutstanding: 240000,
-      status: "overdue",
-      history: [
-        { month: 'Jan', principal: 3000000, interest: 120000 },
-        { month: 'Feb', principal: 3000000, interest: 180000 },
-        { month: 'Mar', principal: 3000000, interest: 240000 }
-      ],
-      paymentHistory: []
-    }
-  ];
+  const fetchDebtors = async () => {
+    const querySnapshot = await getDocs(collection(db, 'debtors'));
+    const debtorsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    setDebtorsData(debtorsData);
+  };
+
+  useEffect(() => {
+    fetchDebtors();
+  }, []);
 
   // Filter and sort debtors
   const filteredDebtors = debtorsData
@@ -262,6 +232,11 @@ const DebtorsDashboard = () => {
     setIsDetailOpen(true);
   };
 
+  const getPrincipalOutstandingForMonth = (debtor, month) => {
+    const historyEntry = debtor.history.find(entry => entry.month === month);
+    return historyEntry ? historyEntry.principal : debtor.principalOutstanding;
+  };
+
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Mobile Sidebar Overlay */}
@@ -440,56 +415,68 @@ const DebtorsDashboard = () => {
 
           {/* Debtors Grid */}
           <Grid container spacing={isMobile ? 2 : 3}>
-            {filteredDebtors.map((debtor) => (
-              <Grid item xs={12} sm={6} lg={4} key={debtor.id}>
-                <Card 
-                  sx={{ 
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: theme.shadows[4],
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: isMobile ? 2 : 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant={isMobile ? "subtitle1" : "h6"}>
-                        {debtor.name}
-                      </Typography>
-                      <Chip
-                        label={debtor.status}
-                        size="small"
-                        sx={{
-                          bgcolor: getStatusColor(debtor.status).light,
-                          color: getStatusColor(debtor.status).main,
-                          textTransform: 'capitalize'
-                        }}
-                      />
-                    </Box>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="textSecondary">
-                        Principal Outstanding
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                        UGX {debtor.principalOutstanding.toLocaleString()}
-                      </Typography>
-                    </Box>
-                    
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      size={isMobile ? "small" : "medium"}
-                      endIcon={<NavigateNextIcon />}
-                      onClick={() => handleDebtorClick(debtor)}
-                      sx={{ mt: 2 }}
-                    >
-                      View Details
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            {filteredDebtors.length > 0 ? (
+              filteredDebtors.map((debtor) => (
+                <Grid item xs={12} sm={6} lg={4} key={debtor.id}>
+                  <Card 
+                    sx={{ 
+                      transition: 'all 0.3s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: theme.shadows[4],
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ p: isMobile ? 2 : 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant={isMobile ? "subtitle1" : "h6"}>
+                          {debtor.name}
+                        </Typography>
+                        <Chip
+                          label={debtor.status}
+                          size="small"
+                          sx={{
+                            bgcolor: getStatusColor(debtor.status).light,
+                            color: getStatusColor(debtor.status).main,
+                            textTransform: 'capitalize'
+                          }}
+                        />
+                      </Box>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="textSecondary">
+                          Principal Outstanding for {selectedMonth}
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {getPrincipalOutstandingForMonth(debtor, selectedMonth).toLocaleString()}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Current Principal Outstanding
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {debtor.principalOutstanding.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        size={isMobile ? "small" : "medium"}
+                        endIcon={<NavigateNextIcon />}
+                        onClick={() => handleDebtorClick(debtor)}
+                        sx={{ mt: 2 }}
+                      >
+                        View Details
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))
+            ) : (
+              <Box className="text-center py-8 text-gray-500" sx={{ width: '100%' }}>
+                No debtors found
+              </Box>
+            )}
           </Grid>
         </Box>
       </Box>

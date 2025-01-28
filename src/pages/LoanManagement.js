@@ -60,6 +60,7 @@ const LoanManagement = () => {
       } else {
         const docRef = await addDoc(collection(db, 'loans'), newLoan);
         setLoans([...loans, { ...newLoan, id: docRef.id }]);
+        await addDebtor(newLoan, docRef.id);
       }
       setFormData({
         customerName: '',
@@ -75,6 +76,28 @@ const LoanManagement = () => {
     } catch (error) {
       console.error('Error adding document: ', error);
     }
+  };
+
+  const addDebtor = async (loan, loanId) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const newDebtor = {
+      id: loanId,
+      name: loan.customerName,
+      openingPrincipal: parseInt(loan.amount),
+      principalAdvanced: 0,
+      principalPaid: 0,
+      principalOutstanding: parseInt(loan.amount),
+      interestOpening: parseInt(loan.interestAmount),
+      interestCharged: parseInt(loan.interestAmount),
+      interestPaid: 0,
+      interestOutstanding: parseInt(loan.interestAmount),
+      status: loan.status.toLowerCase(),
+      history: [
+        { date: currentDate, principal: parseInt(loan.amount), interest: parseInt(loan.interestAmount), loanType: loan.loanType }
+      ],
+      paymentHistory: []
+    };
+    await addDoc(collection(db, 'debtors'), newDebtor);
   };
 
   const fetchLoans = async () => {
