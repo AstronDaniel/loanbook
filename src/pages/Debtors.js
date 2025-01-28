@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card, CardContent, Typography, TextField, Select, MenuItem, Grid,
+  Card, CardContent, Typography, TextField, Grid,
   Button, Box, Chip, InputAdornment, Paper, useTheme, Dialog,
   DialogTitle, DialogContent, DialogActions, Tabs, Tab, IconButton,
   Drawer, useMediaQuery, Tooltip, LinearProgress, Divider
@@ -21,6 +21,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip,
   ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
@@ -33,7 +35,7 @@ const DebtorsDashboard = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
-  const [selectedMonth, setSelectedMonth] = useState('2024-01');
+  const [selectedDate, setSelectedDate] = useState(new Date('2024-01-01'));
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [selectedDebtor, setSelectedDebtor] = useState(null);
@@ -76,7 +78,6 @@ const DebtorsDashboard = () => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
- 
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -97,6 +98,9 @@ const DebtorsDashboard = () => {
   // Detailed View Component
   const DetailedView = ({ debtor }) => {
     if (!debtor) return null;
+
+    const selectedMonth = selectedDate.toISOString().slice(0, 7);
+    const monthData = debtor.history.find(entry => entry.date.startsWith(selectedMonth));
 
     return (
       <Box>
@@ -149,29 +153,86 @@ const DebtorsDashboard = () => {
               </Grid>
               
               <Grid item xs={12}>
-                <Paper sx={{ p: 2, height: 300 }}>
-                  <Typography variant="h6" gutterBottom>Payment Distribution</Typography>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Principal', value: debtor.principalPaid },
-                          { name: 'Interest', value: debtor.interestPaid }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        <Cell fill={theme.palette.primary.main} />
-                        <Cell fill={theme.palette.secondary.main} />
-                      </Pie>
-                      <ChartTooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="h6" gutterBottom>Monthly Loan Details</Typography>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(date) => setSelectedDate(date)}
+                    dateFormat="yyyy-MM"
+                    showMonthYearPicker
+                    showFullMonthYearPicker
+                    className="w-full mb-2"
+                  />
+                  {monthData ? (
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Opening Principal
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.openingPrincipal?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Principal Advanced
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.principalAdvanced?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Part of Principal Paid
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.principalPaid?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Principal Outstanding
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.principalOutstanding?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Opening Interest
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.interestOpening?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Interest Charged
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.interestCharged?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Interest Paid
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.interestPaid?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Typography variant="body2" color="textSecondary">
+                          Interest Outstanding
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                          UGX {monthData.interestOutstanding?.toLocaleString() || '-'}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  ) : (
+                    <Typography color="textSecondary">No data for this month</Typography>
+                  )}
                 </Paper>
               </Grid>
             </Grid>
@@ -184,7 +245,7 @@ const DebtorsDashboard = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={debtor.history}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
+                    <XAxis dataKey="date" />
                     <YAxis />
                     <ChartTooltip />
                     <Line type="monotone" dataKey="principal" stroke={theme.palette.primary.main} />
@@ -233,7 +294,7 @@ const DebtorsDashboard = () => {
   };
 
   const getPrincipalOutstandingForMonth = (debtor, month) => {
-    const historyEntry = debtor.history.find(entry => entry.month === month);
+    const historyEntry = debtor.history.find(entry => entry.date.startsWith(month));
     return historyEntry ? historyEntry.principal : debtor.principalOutstanding;
   };
 
@@ -250,11 +311,10 @@ const DebtorsDashboard = () => {
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
         toggleSidebar={toggleSidebar} 
-       
       />
       <Box sx={{ flexGrow: 1 }}>
-          {/* Header */}
-          <Header toggleSidebar={toggleSidebar} />
+        {/* Header */}
+        <Header toggleSidebar={toggleSidebar} />
         <Box sx={{ p: isMobile ? 2 : 3 }}>
           {/* View Analytics Button for Mobile */}
           {isMobile && (
@@ -399,17 +459,14 @@ const DebtorsDashboard = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <Select
-                fullWidth
-                size={isMobile ? "small" : "medium"}
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                variant="outlined"
-              >
-                <MenuItem value="2024-01">January 2024</MenuItem>
-                <MenuItem value="2024-02">February 2024</MenuItem>
-                <MenuItem value="2024-03">March 2024</MenuItem>
-              </Select>
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date) => setSelectedDate(date)}
+                dateFormat="yyyy-MM"
+                showMonthYearPicker
+                showFullMonthYearPicker
+                className="w-full"
+              />
             </Grid>
           </Grid>
 
@@ -445,10 +502,10 @@ const DebtorsDashboard = () => {
                       
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" color="textSecondary">
-                          Principal Outstanding for {selectedMonth}
+                          Principal Outstanding for {selectedDate.toISOString().slice(0, 7)}
                         </Typography>
                         <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {getPrincipalOutstandingForMonth(debtor, selectedMonth).toLocaleString()}
+                          UGX {getPrincipalOutstandingForMonth(debtor, selectedDate.toISOString().slice(0, 7)).toLocaleString()}
                         </Typography>
                         <Typography variant="body2" color="textSecondary">
                           Current Principal Outstanding
