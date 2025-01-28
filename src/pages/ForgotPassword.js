@@ -60,7 +60,7 @@ const ForgotPassword = () => {
                   Try another email
                 </button>
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/')}
                   className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium 
                            hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
                 >
@@ -88,7 +88,7 @@ const ForgotPassword = () => {
         
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 relative z-10">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/')}
             className="group flex items-center text-gray-600 hover:text-gray-800 transition-colors duration-200 mb-6"
           >
             <ArrowLeft className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200" />
