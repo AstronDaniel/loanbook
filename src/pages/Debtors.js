@@ -36,6 +36,7 @@ const DebtorsDashboard = () => {
   const [detailTab, setDetailTab] = useState(0);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(!isMobile);
 
   // Sample data
   const debtorsData = [
@@ -280,113 +281,128 @@ const DebtorsDashboard = () => {
           {/* Header */}
           <Header toggleSidebar={toggleSidebar} />
         <Box sx={{ p: isMobile ? 2 : 3 }}>
+          {/* View Analytics Button for Mobile */}
+          {isMobile && (
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => setShowAnalytics(!showAnalytics)}
+              >
+                {showAnalytics ? 'Hide Analytics' : 'View Analytics'}
+              </Button>
+            </Box>
+          )}
+
           {/* Enhanced Summary Statistics */}
-          <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
-            {/* Total Outstanding Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Paper 
-                elevation={2} 
-                sx={{ 
-                  p: 3,
-                  height: '100%',
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-                  color: 'white',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                      UGX {summaryStats.totalOutstanding.toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2">
-                      Total Outstanding Principal
-                    </Typography>
-                    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                      <TrendingUpIcon sx={{ mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2">
-                        {((summaryStats.totalOutstanding / filteredDebtors.length) / 1000000).toFixed(1)}M average
+          {(showAnalytics || !isMobile) && (
+            <Grid container spacing={isMobile ? 2 : 3} sx={{ mb: 4 }}>
+              {/* Total Outstanding Card */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ 
+                    p: 3,
+                    height: '100%',
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                    color: 'white',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                        UGX {summaryStats.totalOutstanding.toLocaleString()}
                       </Typography>
+                      <Typography variant="body2">
+                        Total Outstanding Principal
+                      </Typography>
+                      <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                        <TrendingUpIcon sx={{ mr: 1, fontSize: 20 }} />
+                        <Typography variant="body2">
+                          {((summaryStats.totalOutstanding / filteredDebtors.length) / 1000000).toFixed(1)}M average
+                        </Typography>
+                      </Box>
                     </Box>
+                    <MoneyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
                   </Box>
-                  <MoneyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-                </Box>
-              </Paper>
-            </Grid>
+                </Paper>
+              </Grid>
 
-            {/* Active Debtors Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Paper 
-                elevation={2} 
-                sx={{ 
-                  p: 3,
-                  height: '100%',
-                  background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
-                  color: 'white',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                      {summaryStats.activeDebtors}
-                    </Typography>
-                    <Typography variant="body2">
-                      Active Debtors
-                    </Typography>
-                    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                      <AssessmentIcon sx={{ mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2">
-                        {summaryStats.overdueDebtors} overdue
+              {/* Active Debtors Card */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ 
+                    p: 3,
+                    height: '100%',
+                    background: `linear-gradient(135deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
+                    color: 'white',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                        {summaryStats.activeDebtors}
                       </Typography>
+                      <Typography variant="body2">
+                        Active Debtors
+                      </Typography>
+                      <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                        <AssessmentIcon sx={{ mr: 1, fontSize: 20 }} />
+                        <Typography variant="body2">
+                          {summaryStats.overdueDebtors} overdue
+                        </Typography>
+                      </Box>
                     </Box>
+                    <PersonIcon sx={{ fontSize: 40, opacity: 0.8 }} />
                   </Box>
-                  <PersonIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-                </Box>
-              </Paper>
-            </Grid>
+                </Paper>
+              </Grid>
 
-            {/* Total Interest Card */}
-            <Grid item xs={12} sm={6} md={4}>
-              <Paper 
-                elevation={2} 
-                sx={{ 
-                  p: 3,
-                  height: '100%',
-                  background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
-                  color: 'white',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                      UGX {summaryStats.totalInterest.toLocaleString()}
-                    </Typography>
-                    <Typography variant="body2">
-                      Total Interest Outstanding
-                    </Typography>
-                    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
-                      <WalletIcon sx={{ mr: 1, fontSize: 20 }} />
-                      <Typography variant="body2">
-                        {((summaryStats.totalInterest / summaryStats.totalOutstanding) * 100).toFixed(1)}% of principal
+              {/* Total Interest Card */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper 
+                  elevation={2} 
+                  sx={{ 
+                    p: 3,
+                    height: '100%',
+                    background: `linear-gradient(135deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
+                    color: 'white',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                        UGX {summaryStats.totalInterest.toLocaleString()}
                       </Typography>
+                      <Typography variant="body2">
+                        Total Interest Outstanding
+                      </Typography>
+                      <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                        <WalletIcon sx={{ mr: 1, fontSize: 20 }} />
+                        <Typography variant="body2">
+                          {((summaryStats.totalInterest / summaryStats.totalOutstanding) * 100).toFixed(1)}% of principal
+                        </Typography>
+                      </Box>
                     </Box>
+                    <MoneyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
                   </Box>
-                  <MoneyIcon sx={{ fontSize: 40, opacity: 0.8 }} />
-                </Box>
-              </Paper>
+                </Paper>
+              </Grid>
             </Grid>
-          </Grid>
+          )}
 
           {/* Filters */}
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -501,6 +517,16 @@ const DebtorsDashboard = () => {
               </IconButton>
             </Box>
             <DetailedView debtor={selectedDebtor} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button onClick={() => setIsDetailOpen(false)}>Close</Button>
+              <Button 
+                variant="contained" 
+                startIcon={<EditIcon />}
+                onClick={() => console.log('Edit debtor:', selectedDebtor?.name)}
+              >
+                Edit Details
+              </Button>
+            </Box>
           </Box>
         </Drawer>
       ) : (
