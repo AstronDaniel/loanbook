@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 import {
@@ -15,13 +15,9 @@ import {
   TableRow,
   Paper,
   Grid,
-  Alert,
-  AlertTitle,
-  CircularProgress,
   Snackbar,
+  CircularProgress,
 } from '@mui/material';
-import { PieChart, Pie, Cell } from 'recharts';
-import { CalendarToday, CreditCard } from 'lucide-react';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 
@@ -29,7 +25,6 @@ const db = getFirestore(app);
 
 const LoanManagement = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('loans');
   const [formData, setFormData] = useState({
     customerName: '',
     phoneNumber: '',
@@ -50,66 +45,94 @@ const LoanManagement = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  // Utility functions
+  const generateId = () => {
+    return Math.random().toString(36).substr(2, 9);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'UGX'
+    }).format(amount);
+  };
+
+  const getCurrentMonth = () => {
+    const date = new Date();
+    return `${date.getFullYear()}-${date.getMonth() + 1}`;
+  };
+
+  // Loan management functions
+  const createLoan = async (loanData) => {
+    const newLoan = {
+      ...loanData,
+      loanId: generateId(),
+      startDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + (loanData.durationMonths * 30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+      status: 'active'
+    };
+
+    try {
+      const docRef = await addDoc(collection(db, 'loans'), newLoan);
+      setLoans(prevLoans => [...prevLoans, { ...newLoan, id: docRef.id }]);
+      createDebtor(newLoan, docRef.id); // Create debtor after adding loan
+      setSnackbarMessage('Loan added successfully');
+    } catch (error) {
+      console.error('Error adding loan:', error);
+      setSnackbarMessage('Error adding loan');
+    }
+  };
+
+  const createDebtor = (loanData, loanId) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const newDebtor = {
+      loanId: loanId,
+      customerName: loanData.customerName,
+      monthlyRecords: [{
+        id: 0,
+        date: currentDate,
+        month: getCurrentMonth(),
+        openingPrinciple: 0,
+        principleAdvance: Number(loanData.amount),
+        principlePaid: 0,
+        outstandingPrinciple: Number(loanData.amount),
+        openingInterest: 0,
+        interestCharge: Number(loanData.interestAmount),
+        intrestPaid: 0,
+        outstandingInterest: Number(loanData.interestAmount)
+      }],
+      currentOpeningPrincipal: Number(loanData.amount),
+      totalPrincipalPaid: 0,
+      currentOpeningInterest: Number(loanData.interestAmount),
+      totalInterestPaid: 0,
+      status: 'active'
+    };
+
+    addDoc(collection(db, 'debtors'), newDebtor)
+      .then(() => console.log('Debtor created successfully'))
+      .catch((error) => console.error('Error creating debtor:', error));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const newLoan = {
-      ...formData,
-      startDate: new Date().toISOString().split('T')[0],
-      dueDate: calculateEndDate(formData.durationMonths),
-    };
     try {
       if (isEditing) {
         const loanDoc = doc(db, 'loans', currentLoanId);
-        await updateDoc(loanDoc, newLoan);
-        setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...newLoan } : loan));
+        await updateDoc(loanDoc, formData);
+        setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...formData } : loan));
         setSnackbarMessage('Loan updated successfully');
       } else {
-        const docRef = await addDoc(collection(db, 'loans'), newLoan);
-        setLoans([...loans, { ...newLoan, id: docRef.id }]);
-        await addDebtor(newLoan, docRef.id);
-        setSnackbarMessage('Loan added successfully');
+        await createLoan(formData); // Create new loan
       }
-      setFormData({
-        customerName: '',
-        phoneNumber: '',
-        loanType: 'Personal',
-        amount: '',
-        interestAmount: '',
-        durationMonths: '',
-        status: 'Active',
-      });
-      setIsEditing(false);
-      setCurrentLoanId(null);
+      resetForm();
     } catch (error) {
-      console.error('Error adding document: ', error);
-      setSnackbarMessage('Error adding/updating loan');
+      console.error('Error processing request:', error);
+      setSnackbarMessage('Error processing request');
     } finally {
       setLoading(false);
       setSnackbarOpen(true);
     }
-  };
-
-  const addDebtor = async (loan, loanId) => {
-    const currentDate = new Date().toISOString().split('T')[0];
-    const newDebtor = {
-      id: loanId,
-      name: loan.customerName,
-      openingPrincipal: parseInt(loan.amount),
-      principalAdvanced: 0,
-      principalPaid: 0,
-      principalOutstanding: parseInt(loan.amount),
-      interestOpening: parseInt(loan.interestAmount),
-      interestCharged: parseInt(loan.interestAmount),
-      interestPaid: 0,
-      interestOutstanding: parseInt(loan.interestAmount),
-      status: loan.status.toLowerCase(),
-      history: [
-        { date: currentDate, principal: parseInt(loan.amount), interest: parseInt(loan.interestAmount), loanType: loan.loanType }
-      ],
-      paymentHistory: []
-    };
-    await addDoc(collection(db, 'debtors'), newDebtor);
   };
 
   const fetchLoans = async () => {
@@ -118,14 +141,22 @@ const LoanManagement = () => {
     setLoans(loansData);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchLoans();
   }, []);
 
-  const calculateEndDate = (durationMonths) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() + parseInt(durationMonths));
-    return date.toISOString().split('T')[0];
+  const resetForm = () => {
+    setFormData({
+      customerName: '',
+      phoneNumber: '',
+      loanType: 'Personal',
+      amount: '',
+      interestAmount: '',
+      durationMonths: '',
+      status: 'Active',
+    });
+    setIsEditing(false);
+    setCurrentLoanId(null);
   };
 
   const handleEdit = (loan) => {
@@ -148,29 +179,19 @@ const LoanManagement = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
           onClick={toggleSidebar}
         />
       )}
-      {/* Sidebar */}
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
         toggleSidebar={toggleSidebar} 
-        activeSection={activeSection} 
-        setActiveSection={setActiveSection} 
       />
-
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <Header toggleSidebar={toggleSidebar} />
-
-        {/* Loan Management Content */}
         <main className="flex-1 overflow-y-auto p-4">
-          {/* Loan Registration Form */}
           <Paper elevation={3} className="p-4 mb-4 bg-white">
             <Typography variant="h5">New Loan Registration</Typography>
             <form onSubmit={handleSubmit}>
@@ -249,23 +270,7 @@ const LoanManagement = () => {
           <Paper elevation={3} className="p-4">
             <Typography variant="h6" className="mb-4">Recent Loans</Typography>
             <Box className="overflow-x-auto">
-              <Table 
-                className="min-w-full bg-white"
-                size="small" // Makes the table more compact
-                sx={{
-                  // Maintain table format on mobile with horizontal scroll
-                  minWidth: 650,
-                  '& th': {
-                    fontWeight: 'bold',
-                    whiteSpace: 'nowrap',
-                    padding: '12px 8px',
-                  },
-                  '& td': {
-                    whiteSpace: 'nowrap',
-                    padding: '8px',
-                  }
-                }}
-              >
+              <Table className="min-w-full bg-white" size="small">
                 <TableHead>
                   <TableRow sx={{
                     backgroundColor: 'rgba(0, 0, 0, 0.04)',
@@ -281,62 +286,17 @@ const LoanManagement = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {loans.map((loan, index) => (
-                    <TableRow key={index}>
+                  {loans.map((loan) => (
+                    <TableRow key={loan.id}>
                       <TableCell>{loan.customerName}</TableCell>
-                      <TableCell>
-                        <span className="px-2 py-1 rounded-full text-xs font-medium" 
-                              style={{
-                                backgroundColor: loan.loanType === 'Personal' ? '#E3F2FD' : '#E8F5E9',
-                                color: loan.loanType === 'Personal' ? '#1976D2' : '#2E7D32',
-                              }}>
-                          {loan.loanType}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {new Intl.NumberFormat('en-UG', {
-                          style: 'currency',
-                          currency: 'UGX'
-                        }).format(loan.amount)}
-                      </TableCell>
-                      <TableCell>
-                        {new Intl.NumberFormat('en-UG', {
-                          style: 'currency',
-                          currency: 'UGX'
-                        }).format(loan.interestAmount)}
-                      </TableCell>
+                      <TableCell>{loan.loanType}</TableCell>
+                      <TableCell>{formatCurrency(loan.amount)}</TableCell>
+                      <TableCell>{formatCurrency(loan.interestAmount)}</TableCell>
                       <TableCell>{new Date(loan.startDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{new Date(calculateEndDate(loan.durationMonths)).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{loan.status}</TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          loan.status === 'Active' 
-                            ? 'bg-green-100 text-green-800'
-                            : loan.status === 'Late'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {loan.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="small" 
-                            variant="outlined" 
-                            onClick={() => handleEdit(loan)}
-                            sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                          >
-                            Edit
-                          </Button>
-                          <Button 
-                            size="small" 
-                            variant="contained" 
-                            color="error"
-                            sx={{ minWidth: 'auto', padding: '4px 8px' }}
-                          >
-                            Del
-                          </Button>
-                        </div>
+                        <Button size="small" variant="outlined" onClick={() => handleEdit(loan)}>Edit</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -344,9 +304,7 @@ const LoanManagement = () => {
               </Table>
             </Box>
             {loans.length === 0 && (
-              <Box className="text-center py-8 text-gray-500">
-                No loans registered yet
-              </Box>
+              <Box className="text-center py-8 text-gray-500">No loans registered yet</Box>
             )}
           </Paper>
         </main>

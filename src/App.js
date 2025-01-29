@@ -8,8 +8,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import LoanManagement from './pages/LoanManagement';
 import Deptors from './pages/Debtors';
-// import Ledger from './pages/Ledger';
-// import Transactions from './pages/Transactions';
+import Ledger from './pages/Ledger';
+import Transactions from './pages/Transactions';
 // import Reports from './pages/Reports';
 // import Settings from './pages/Settings';
 
@@ -24,9 +24,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/loan-management" element={<LoanManagement />} />
           <Route path="/debtors" element={<Deptors />} />
-          {/* <Route path="/ledger" element={<Ledger />} />
+          <Route path="/ledger" element={<Ledger />} />
           <Route path="/transactions" element={<Transactions />} />
-          <Route path="/reports" element={<Reports />} />
+          {/* <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} /> */}
         </Routes>
       </div>
