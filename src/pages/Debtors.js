@@ -3,7 +3,8 @@ import {
   Card, CardContent, Typography, TextField, Grid,
   Button, Box, Chip, InputAdornment, Paper, useTheme, Dialog,
   DialogTitle, DialogContent, DialogActions, Tabs, Tab, IconButton,
-  Drawer, useMediaQuery, Tooltip, LinearProgress, Divider
+  Drawer, useMediaQuery, LinearProgress, Divider,
+  Alert, styled
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -15,20 +16,61 @@ import {
   Edit as EditIcon,
   History as HistoryIcon,
   Assessment as AssessmentIcon,
-  AccountBalanceWallet as WalletIcon
+  AccountBalanceWallet as WalletIcon,
+  Save as SaveIcon
 } from '@mui/icons-material';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip,
-  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
+  ResponsiveContainer
 } from 'recharts';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { app } from '../firebase'; // Adjust the path as necessary
+import { getFirestore, collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { app } from '../firebase';
 
 const db = getFirestore(app);
+
+// Styled date picker wrapper
+const StyledDatePicker = styled('div')(({ theme }) => ({
+  '& .react-datepicker-wrapper': {
+    width: '100%'
+  },
+  '& .react-datepicker__input-container input': {
+    width: '100%',
+    padding: '8px 14px',
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: '4px',
+    fontSize: '1rem',
+    '&:focus': {
+      outline: 'none',
+      borderColor: theme.palette.primary.main,
+      boxShadow: `0 0 0 2px ${theme.palette.primary.light}`,
+    }
+  },
+  '& .react-datepicker': {
+    fontFamily: theme.typography.fontFamily,
+    border: `1px solid ${theme.palette.divider}`,
+    boxShadow: theme.shadows[2],
+  },
+  '& .react-datepicker__header': {
+    backgroundColor: theme.palette.primary.light,
+    borderBottom: `1px solid ${theme.palette.divider}`,
+  },
+  '& .react-datepicker__current-month': {
+    color: theme.palette.primary.contrastText,
+  },
+  '& .react-datepicker__month': {
+    margin: '0.4em',
+  },
+  '& .react-datepicker__day--selected': {
+    backgroundColor: theme.palette.primary.main,
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+    }
+  }
+}));
 
 const DebtorsDashboard = () => {
   const theme = useTheme();
@@ -44,11 +86,19 @@ const DebtorsDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(!isMobile);
   const [debtorsData, setDebtorsData] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [error, setError] = useState(null);
 
   const fetchDebtors = async () => {
-    const querySnapshot = await getDocs(collection(db, 'debtors'));
-    const debtorsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    setDebtorsData(debtorsData);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'debtors'));
+      const debtorsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      setDebtorsData(debtorsData);
+    } catch (err) {
+      setError('Failed to fetch debtors data');
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -95,12 +145,229 @@ const DebtorsDashboard = () => {
   // Calculate completion percentage for progress bars
   const calculateCompletion = (paid, total) => (paid / total) * 100;
 
-  // Detailed View Component
+  // Calculate monthly data based on previous month
+  const calculateMonthlyData = (prevMonth, newData) => {
+    const openingPrincipal = prevMonth ? prevMonth.principalOutstanding : 0;
+    const openingInterest = prevMonth ? prevMonth.interestOutstanding : 0;
+    
+    const principalOutstanding = 
+      openingPrincipal + 
+      Number(newData.principalAdvance || 0) - 
+      Number(newData.principalPaid || 0);
+    
+    const interestOutstanding = 
+      openingInterest + 
+      Number(newData.interestCharge || 0) - 
+      Number(newData.interestPaid || 0);
+
+    return {
+      ...newData,
+      openingPrincipal,
+      openingInterest,
+      principalOutstanding,
+      interestOutstanding,
+      date: selectedDate.toISOString().slice(0, 7)
+    };
+  };
+
+  // Handle monthly record update
+  const handleUpdateMonthlyRecord = async () => {
+    if (!selectedDebtor || !editData) return;
+
+    try {
+      const debtorRef = doc(db, 'debtors', selectedDebtor.id);
+      
+      const currentMonth = selectedDate.toISOString().slice(0, 7);
+      const monthlyRecords = [...(selectedDebtor.monthlyRecords || [])];
+      const monthIndex = monthlyRecords.findIndex(r => r.date === currentMonth);
+      const prevMonth = monthIndex > 0 ? monthlyRecords[monthIndex - 1] : null;
+
+      // Calculate new values
+      const calculatedData = calculateMonthlyData(prevMonth, editData);
+
+      // Update or add new monthly record
+      if (monthIndex >= 0) {
+        monthlyRecords[monthIndex] = calculatedData;
+      } else {
+        monthlyRecords.push(calculatedData);
+      }
+
+      // Sort records by date
+      monthlyRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      // Update Firebase
+      await updateDoc(debtorRef, {
+        monthlyRecords,
+        lastUpdated: new Date().toISOString()
+      });
+
+      // Update local state
+      const updatedDebtors = debtorsData.map(d => 
+        d.id === selectedDebtor.id 
+          ? { ...d, monthlyRecords } 
+          : d
+      );
+      
+      setDebtorsData(updatedDebtors);
+      setSelectedDebtor({ ...selectedDebtor, monthlyRecords });
+      setIsEditMode(false);
+      setEditData(null);
+
+      // Refresh the data
+      await fetchDebtors();
+
+    } catch (err) {
+      setError('Failed to update record');
+      console.error(err);
+    }
+  };
+
+  // Start editing monthly record
+  const handleStartEdit = (monthData) => {
+    setEditData(monthData || {
+      principalAdvance: 0,
+      principalPaid: 0,
+      interestCharge: 0,
+      interestPaid: 0
+    });
+    setIsEditMode(true);
+  };
+
+  // Edit form component
+  const MonthlyEditForm = () => (
+    <Box sx={{ mt: 2 }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Principal Advance"
+            type="number"
+            fullWidth
+            value={editData?.principalAdvance || ''}
+            onChange={(e) => setEditData({
+              ...editData,
+              principalAdvance: Number(e.target.value)
+            })}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Principal Paid"
+            type="number"
+            fullWidth
+            value={editData?.principalPaid || ''}
+            onChange={(e) => setEditData({
+              ...editData,
+              principalPaid: Number(e.target.value)
+            })}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Interest Charge"
+            type="number"
+            fullWidth
+            value={editData?.interestCharge || ''}
+            onChange={(e) => setEditData({
+              ...editData,
+              interestCharge: Number(e.target.value)
+            })}
+          />
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Interest Paid"
+            type="number"
+            fullWidth
+            value={editData?.interestPaid || ''}
+            onChange={(e) => setEditData({
+              ...editData,
+              interestPaid: Number(e.target.value)
+            })}
+          />
+        </Grid>
+      </Grid>
+      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        <Button onClick={() => setIsEditMode(false)}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={<SaveIcon />}
+          onClick={handleUpdateMonthlyRecord}
+        >
+          Save Changes
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  // Monthly record display component
+  const MonthlyRecordDisplay = ({ monthData }) => (
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Opening Principal
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.openingPrincipal?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Principal Advanced
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.principalAdvance?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Principal Paid
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.principalPaid?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Principal Outstanding
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.principalOutstanding?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Interest Charged
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.interestCharge?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <Typography variant="body2" color="textSecondary">
+          Interest Paid
+        </Typography>
+        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+          UGX {monthData?.interestPaid?.toLocaleString() || '0'}
+        </Typography>
+      </Grid>
+    </Grid>
+  );
+
+  // Get current month's data for a debtor
+  const getCurrentMonthData = (debtor) => {
+    if (!debtor?.monthlyRecords?.length) return null;
+    const currentMonth = selectedDate.toISOString().slice(0, 7);
+    const monthData = debtor.monthlyRecords.find(r => r.date === currentMonth);
+    return monthData || null;
+  };
+
+  // Modified DetailedView component
   const DetailedView = ({ debtor }) => {
     if (!debtor) return null;
 
-    const selectedMonth = selectedDate.toISOString().slice(0, 7);
-    const monthData = debtor.history.find(entry => entry.date.startsWith(selectedMonth));
+    const currentMonthData = getCurrentMonthData(debtor);
 
     return (
       <Box>
@@ -110,146 +377,56 @@ const DebtorsDashboard = () => {
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab icon={<AssessmentIcon />} label="Overview" />
+          <Tab icon={<AssessmentIcon />} label="Current Month" />
           <Tab icon={<TrendingUpIcon />} label="Trends" />
           <Tab icon={<HistoryIcon />} label="History" />
         </Tabs>
 
         <Box sx={{ mt: 3 }}>
           {detailTab === 0 && (
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>Loan Summary</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        Principal Progress
-                      </Typography>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={calculateCompletion(debtor.principalPaid, debtor.openingPrincipal)}
-                        sx={{ height: 10, borderRadius: 5, my: 1 }}
-                      />
-                      <Typography variant="body2">
-                        {`${debtor.principalPaid.toLocaleString()} / ${debtor.openingPrincipal.toLocaleString()} UGX`}
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="subtitle2" color="textSecondary">
-                        Interest Progress
-                      </Typography>
-                      <LinearProgress 
-                        variant="determinate"
-                        value={calculateCompletion(debtor.interestPaid, debtor.interestOpening + debtor.interestCharged)}
-                        sx={{ height: 10, borderRadius: 5, my: 1 }}
-                      />
-                      <Typography variant="body2">
-                        {`${debtor.interestPaid.toLocaleString()} / ${(debtor.interestOpening + debtor.interestCharged).toLocaleString()} UGX`}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Grid>
+            <Paper sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Monthly Details</Typography>
+                {!isEditMode && (
+                  <Button
+                    startIcon={<EditIcon />}
+                    onClick={() => handleStartEdit(currentMonthData)}
+                  >
+                    Edit
+                  </Button>
+                )}
+              </Box>
               
-              <Grid item xs={12}>
-                <Paper sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>Monthly Loan Details</Typography>
-                  <DatePicker
-                    selected={selectedDate}
-                    onChange={(date) => setSelectedDate(date)}
-                    dateFormat="yyyy-MM"
-                    showMonthYearPicker
-                    showFullMonthYearPicker
-                    className="w-full mb-2"
-                  />
-                  {monthData ? (
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Opening Principal
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.openingPrincipal?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Principal Advanced
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.principalAdvanced?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Part of Principal Paid
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.principalPaid?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Principal Outstanding
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.principalOutstanding?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Opening Interest
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.interestOpening?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Interest Charged
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.interestCharged?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Interest Paid
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.interestPaid?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="body2" color="textSecondary">
-                          Interest Outstanding
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {monthData.interestOutstanding?.toLocaleString() || '-'}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  ) : (
-                    <Typography color="textSecondary">No data for this month</Typography>
-                  )}
-                </Paper>
-              </Grid>
-            </Grid>
+              {isEditMode ? (
+                <MonthlyEditForm />
+              ) : (
+                <MonthlyRecordDisplay monthData={currentMonthData} />
+              )}
+            </Paper>
           )}
 
           {detailTab === 1 && (
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Monthly Trends</Typography>
+              <Typography variant="h6" gutterBottom>Trends</Typography>
               <Box sx={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={debtor.history}>
+                  <LineChart data={debtor.monthlyRecords}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <ChartTooltip />
-                    <Line type="monotone" dataKey="principal" stroke={theme.palette.primary.main} />
-                    <Line type="monotone" dataKey="interest" stroke={theme.palette.secondary.main} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="principalOutstanding" 
+                      stroke={theme.palette.primary.main} 
+                      name="Principal"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="interestOutstanding" 
+                      stroke={theme.palette.secondary.main} 
+                      name="Interest"
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </Box>
@@ -258,29 +435,16 @@ const DebtorsDashboard = () => {
 
           {detailTab === 2 && (
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Payment History</Typography>
-              {debtor.paymentHistory.length > 0 ? (
-                debtor.paymentHistory.map((payment, index) => (
-                  <Box key={index} sx={{ py: 2 }}>
-                    <Grid container justifyContent="space-between" alignItems="center">
-                      <Grid item>
-                        <Typography variant="subtitle1">{payment.date}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {payment.type}
-                        </Typography>
-                      </Grid>
-                      <Grid item>
-                        <Typography variant="subtitle1" color="primary">
-                          UGX {payment.amount.toLocaleString()}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                    {index < debtor.paymentHistory.length - 1 && <Divider sx={{ mt: 2 }} />}
-                  </Box>
-                ))
-              ) : (
-                <Typography color="textSecondary">No payment history available</Typography>
-              )}
+              <Typography variant="h6" gutterBottom>Monthly History</Typography>
+              {debtor.monthlyRecords?.map((record, index) => (
+                <Box key={index} sx={{ py: 2 }}>
+                  <Typography variant="subtitle1">{record.date}</Typography>
+                  <MonthlyRecordDisplay monthData={record} />
+                  {index < debtor.monthlyRecords.length - 1 && (
+                    <Divider sx={{ mt: 2 }} />
+                  )}
+                </Box>
+              ))}
             </Paper>
           )}
         </Box>
@@ -294,8 +458,8 @@ const DebtorsDashboard = () => {
   };
 
   const getPrincipalOutstandingForMonth = (debtor, month) => {
-    const historyEntry = debtor.history.find(entry => entry.date.startsWith(month));
-    return historyEntry ? historyEntry.principal : debtor.principalOutstanding;
+    const monthData = debtor.monthlyRecords?.find(r => r.date === month);
+    return monthData ? monthData.principalOutstanding : 0;
   };
 
   return (
@@ -459,14 +623,15 @@ const DebtorsDashboard = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <DatePicker
-                selected={selectedDate}
-                onChange={(date) => setSelectedDate(date)}
-                dateFormat="yyyy-MM"
-                showMonthYearPicker
-                showFullMonthYearPicker
-                className="w-full"
-              />
+              <StyledDatePicker>
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date) => setSelectedDate(date)}
+                  dateFormat="MMMM yyyy"
+                  showMonthYearPicker
+                  placeholderText="Select month"
+                />
+              </StyledDatePicker>
             </Grid>
           </Grid>
 
