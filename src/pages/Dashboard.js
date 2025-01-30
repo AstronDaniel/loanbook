@@ -22,7 +22,7 @@ const Dashboard = () => {
 
   // Helper function for UGX formatting
   const formatUGX = (amount) => {
-    return new Intl.NumberFormat('en-UG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'UGX',
       minimumFractionDigits: 0,
