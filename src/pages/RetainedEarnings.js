@@ -335,16 +335,16 @@ const RetainedEarnings = () => {
                   {selectedMonth && (
                     <Stack spacing={2} sx={{ pt: 2 }}>
                       <Typography><strong>Month:</strong> {selectedMonth}</Typography>
-                      <Typography><strong>Earnings:</strong> ${yearData.monthlyData[selectedMonth]?.earnings?.toLocaleString() || 0}</Typography>
-                      <Typography><strong>Distributions:</strong> ${Math.abs(Object.values(yearData.monthlyData[selectedMonth]?.distributions || {}).reduce((a, b) => a + b, 0)).toLocaleString()}</Typography>
-                      <Typography><strong>Retained Earnings:</strong> ${yearData.monthlyData[selectedMonth]?.retainedEarnings?.toLocaleString() || 0}</Typography>
+                      <Typography><strong>Earnings:</strong> UGX {yearData.monthlyData[selectedMonth]?.earnings?.toLocaleString() || 0}</Typography>
+                      <Typography><strong>Distributions:</strong> UGX {Math.abs(Object.values(yearData.monthlyData[selectedMonth]?.distributions || {}).reduce((a, b) => a + b, 0)).toLocaleString()}</Typography>
+                      <Typography><strong>Retained Earnings:</strong> UGX {yearData.monthlyData[selectedMonth]?.retainedEarnings?.toLocaleString() || 0}</Typography>
                       <Typography variant="h6" gutterBottom>
                         Investor Details
                       </Typography>
                       {Object.entries(yearData.monthlyData[selectedMonth]?.distributions || {}).map(([investorId, amount]) => (
                         <Box key={investorId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography><strong>Investor {investorId}:</strong></Typography>
-                          <Typography>${Math.abs(amount).toLocaleString()}</Typography>
+                          <Typography>UGX {Math.abs(amount).toLocaleString()}</Typography>
                         </Box>
                       ))}
                     </Stack>
