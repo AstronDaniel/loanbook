@@ -1,310 +1,694 @@
 import React, { useState, useEffect } from 'react';
-import {  Card, CardContent, Typography, TextField, Grid,
-  Button, Box, Chip, InputAdornment, Paper, useTheme, Dialog,
-  DialogTitle, DialogContent, DialogActions, Tabs, Tab, IconButton,
-  Drawer, useMediaQuery, LinearProgress, Divider,
-  Alert, styled,CardHeader,} from '@mui/material';
-import {
-  Search,
-  Filter as FilterList,
-  Download,
-  ChevronDown,
-  Plus,
-  FileSpreadsheet,
-  ArrowUpCircle,
-  ArrowDownCircle,
-  Calendar,
-  ChevronsUpDown,
-  MoreVertical,
+import { 
+  Card, 
+  CardContent, 
+  Typography, 
+  TextField, 
+  Grid, 
+  Button, 
+  Box, 
+  Chip, 
+  InputAdornment, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions,
+  Tabs,
+  Tab,
+  IconButton,
+  Menu,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Paper,
+  Drawer,
+  useMediaQuery,
+  LinearProgress,
+  Divider,
+  Alert,
+  styled,
+  useTheme
+} from '@mui/material';
+import { 
+  Search, 
+  Filter, 
+  Download, 
+  ChevronDown, 
+  Plus, 
+  FileSpreadsheet, 
+  ArrowUpCircle, 
+  ArrowDownCircle, 
+  Calendar, 
+  ChevronsUpDown, 
+  MoreVertical, 
   Clock,
-  
+  Edit,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Sidebar from '../components/SideBar';
+import Header from '../components/Header';
+
+// Styled Components
+const StyledCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  '& .MuiCardContent-root': {
+    flexGrow: 1,
+  },
+}));
+
+const IconWrapper = styled(Box)(({ theme }) => ({
+  width: 48,
+  height: 48,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
 
 const LedgerPage = () => {
-  const [entries, setEntries] = useState([]);
+  // State Management
+  const [entries, setEntries] = useState([
+    { 
+      id: 1, 
+      date: '2025-01-30', 
+      description: 'Client Payment', 
+      reference: 'INV-001', 
+      type: 'credit', 
+      amount: 2500000, 
+      balance: 2500000, 
+      status: 'completed',
+      notes: 'Payment received for Project A'
+    },
+    { 
+      id: 2, 
+      date: '2025-01-29', 
+      description: 'Office Supplies', 
+      reference: 'EXP-001', 
+      type: 'debit', 
+      amount: 150000, 
+      balance: 2350000, 
+      status: 'pending',
+      notes: 'Monthly office supplies'
+    },
+  ]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState({ start: null, end: null });
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showEntryDialog, setShowEntryDialog] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({
-    type: 'all',
-    status: 'all',
-    amount: 'all'
+  const [showNewEntryDialog, setShowNewEntryDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState(null);
+  const [newEntry, setNewEntry] = useState({
+    date: format(new Date(), 'yyyy-MM-dd'),
+    description: '',
+    type: 'debit',
+    amount: '',
+    reference: '',
+    notes: '',
+    status: 'pending'
   });
 
-  // Sample data - Replace with your actual data fetching logic
-  const sampleData = [
-    {
-      id: 1,
-      date: '2024-01-15',
-      type: 'debit',
-      description: 'Loan Disbursement - John Doe',
-      amount: 5000000,
-      balance: 5000000,
-      reference: 'LD-2024-001',
-      status: 'completed',
-      category: 'loan',
-      notes: 'First time borrower'
-    },
-    // Add more sample entries...
-  ];
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    // Simulating data fetch
-    setLoading(true);
-    setTimeout(() => {
-      setEntries(sampleData);
-      setLoading(false);
-    }, 1000);
-  }, []);
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    // Implement search logic
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const handleDateRangeChange = (range) => {
-    setDateRange(range);
-    // Implement date filtering
-  };
+  // Computed Values
+  const totalBalance = entries.reduce((acc, curr) => {
+    return curr.type === 'credit' ? acc + curr.amount : acc - curr.amount;
+  }, 0);
 
-  const handleFilterChange = (newFilters) => {
-    setFilterOptions(newFilters);
-    // Implement filtering
-  };
+  const monthlyTransactions = entries.length;
+  const pendingEntries = entries.filter(e => e.status === 'pending').length;
 
-  const handleEntryClick = (entry) => {
+  // Filter entries based on search and status
+  const filteredEntries = entries.filter(entry => {
+    const matchesSearch = entry.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         entry.reference.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Chart data preparation
+  const chartData = entries
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .map(entry => ({
+      date: format(new Date(entry.date), 'MMM dd'),
+      balance: entry.balance
+    }));
+
+  // Handlers
+  const handleMenuOpen = (event, entry) => {
+    setAnchorEl(event.currentTarget);
     setSelectedEntry(entry);
-    setShowEntryDialog(true);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNewEntry = () => {
+    const entry = {
+      id: entries.length + 1,
+      ...newEntry,
+      amount: Number(newEntry.amount),
+      balance: totalBalance + (newEntry.type === 'credit' ? Number(newEntry.amount) : -Number(newEntry.amount))
+    };
+    setEntries([entry, ...entries]);
+    setShowNewEntryDialog(false);
+    setNewEntry({
+      date: format(new Date(), 'yyyy-MM-dd'),
+      description: '',
+      type: 'debit',
+      amount: '',
+      reference: '',
+      notes: '',
+      status: 'pending'
+    });
+  };
+
+  const handleDeleteEntry = () => {
+    setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
+    setDeleteDialogOpen(false);
+    setEntryToDelete(null);
   };
 
   const handleExport = () => {
-    // Implement export logic
+    const csv = [
+      ['Date', 'Description', 'Reference', 'Type', 'Amount', 'Balance', 'Status'],
+      ...entries.map(entry => [
+        entry.date,
+        entry.description,
+        entry.reference,
+        entry.type,
+        entry.amount,
+        entry.balance,
+        entry.status
+      ])
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ledger-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
   };
 
-  const LedgerSummaryCards = () => (
-    <Grid container spacing={4} className="mb-6">
+  // Components
+  const StatusChip = ({ status }) => {
+    const colors = {
+      completed: 'success',
+      pending: 'warning',
+      failed: 'error'
+    };
+    
+    return (
+      <Chip 
+        label={status} 
+        color={colors[status]} 
+        size="small"
+        variant="outlined"
+      />
+    );
+  };
+
+  const SummaryCards = () => (
+    <Grid container spacing={3} sx={{ mb: 4 }}>
       <Grid item xs={12} md={4}>
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <Typography className="text-sm font-medium text-gray-500">
-                Total Balance
-              </Typography>
-              <Typography className="text-2xl font-bold mt-1">
-                UGX 45,678,900
-              </Typography>
-              <div className="flex items-center mt-2">
-                <ArrowUpCircle className="w-4 h-4 text-green-500 mr-1" />
-                <Typography className="text-sm text-green-500">
-                  +12.5% from last month
+        <StyledCard>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography color="textSecondary" gutterBottom>
+                  Total Balance
                 </Typography>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <FileSpreadsheet className="w-6 h-6 text-primary" />
-            </div>
+                <Typography variant="h4" component="div">
+                  UGX {totalBalance.toLocaleString()}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <ArrowUpCircle size={16} color="green" />
+                  <Typography variant="body2" color="success.main" sx={{ ml: 1 }}>
+                    +12.5% from last month
+                  </Typography>
+                </Box>
+              </Box>
+              <IconWrapper sx={{ bgcolor: 'primary.light' }}>
+                <FileSpreadsheet size={24} color={theme.palette.primary.main} />
+              </IconWrapper>
+            </Box>
           </CardContent>
-        </Card>
+        </StyledCard>
       </Grid>
 
       <Grid item xs={12} md={4}>
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <Typography className="text-sm font-medium text-gray-500">
-                Monthly Transactions
-              </Typography>
-              <Typography className="text-2xl font-bold mt-1">
-                1,234
-              </Typography>
-              <div className="flex items-center mt-2">
-                <ChevronsUpDown className="w-4 h-4 text-blue-500 mr-1" />
-                <Typography className="text-sm text-blue-500">
-                  Average 41 per day
+        <StyledCard>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography color="textSecondary" gutterBottom>
+                  Monthly Transactions
                 </Typography>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-blue-500" />
-            </div>
+                <Typography variant="h4" component="div">
+                  {monthlyTransactions}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Calendar size={16} color={theme.palette.info.main} />
+                  <Typography variant="body2" color="info.main" sx={{ ml: 1 }}>
+                    Average {Math.round(monthlyTransactions / 30)} per day
+                  </Typography>
+                </Box>
+              </Box>
+              <IconWrapper sx={{ bgcolor: 'info.light' }}>
+                <Calendar size={24} color={theme.palette.info.main} />
+              </IconWrapper>
+            </Box>
           </CardContent>
-        </Card>
+        </StyledCard>
       </Grid>
 
       <Grid item xs={12} md={4}>
-        <Card>
-          <CardContent className="flex items-center justify-between p-6">
-            <div>
-              <Typography className="text-sm font-medium text-gray-500">
-                Pending Entries
-              </Typography>
-              <Typography className="text-2xl font-bold mt-1">
-                23
-              </Typography>
-              <div className="flex items-center mt-2">
-                <ArrowDownCircle className="w-4 h-4 text-orange-500 mr-1" />
-                <Typography className="text-sm text-orange-500">
-                  5 require attention
+        <StyledCard>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <Box>
+                <Typography color="textSecondary" gutterBottom>
+                  Pending Entries
                 </Typography>
-              </div>
-            </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-              <Clock className="w-6 h-6 text-orange-500" />
-            </div>
+                <Typography variant="h4" component="div">
+                  {pendingEntries}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <Clock size={16} color={theme.palette.warning.main} />
+                  <Typography variant="body2" color="warning.main" sx={{ ml: 1 }}>
+                    Requires attention
+                  </Typography>
+                </Box>
+              </Box>
+              <IconWrapper sx={{ bgcolor: 'warning.light' }}>
+                <Clock size={24} color={theme.palette.warning.main} />
+              </IconWrapper>
+            </Box>
           </CardContent>
-        </Card>
+        </StyledCard>
       </Grid>
     </Grid>
   );
 
-  const LedgerTable = () => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between p-6">
-        <Typography variant="h5">Ledger Entries</Typography>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            New Entry
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left p-4">Date</th>
-                <th className="text-left p-4">Description</th>
-                <th className="text-left p-4">Reference</th>
-                <th className="text-right p-4">Debit</th>
-                <th className="text-right p-4">Credit</th>
-                <th className="text-right p-4">Balance</th>
-                <th className="text-center p-4">Status</th>
-                <th className="text-right p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr 
-                  key={entry.id} 
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleEntryClick(entry)}
-                >
-                  <td className="p-4">{format(new Date(entry.date), 'dd MMM yyyy')}</td>
-                  <td className="p-4">{entry.description}</td>
-                  <td className="p-4">{entry.reference}</td>
-                  <td className="text-right p-4">
-                    {entry.type === 'debit' ? `UGX ${entry.amount.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="text-right p-4">
-                    {entry.type === 'credit' ? `UGX ${entry.amount.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="text-right p-4">UGX {entry.balance.toLocaleString()}</td>
-                  <td className="p-4">
-                    <Chip
-                      variant="small"
-                      className={
-                        entry.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        entry.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }
-                    >
-                      {entry.status}
-                    </Chip>
-                  </td>
-                  <td className="p-4">
-                    <IconButton>
-                      <MoreVertical className="w-4 h-4" />
-                    </IconButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <Typography variant="h4" className="mb-2">Ledger</Typography>
-        <Typography className="text-gray-500">
-          Track and manage all financial records
-        </Typography>
-      </div>
-
-      <LedgerSummaryCards />
-
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <TextField
-          placeholder="Search entries..."
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-          className="w-full md:w-96"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search className="w-4 h-4" />
-              </InputAdornment>
-            ),
-          }}
+    <div className="flex h-screen bg-gray-50">
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={toggleSidebar}
         />
-        <Button variant="outline" className="whitespace-nowrap">
-          <FilterList className="w-4 h-4 mr-2" />
-          Filters
-        </Button>
+      )}
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen} 
+        toggleSidebar={toggleSidebar} 
+      />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header toggleSidebar={toggleSidebar} />
+        <main className="flex-1 overflow-y-auto p-4">
+          {/* Header */}
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" gutterBottom>
+              Ledger
+            </Typography>
+            <Typography color="textSecondary">
+              Track and manage all financial records
+            </Typography>
+          </Box>
+
+          {/* Summary Cards */}
+          <SummaryCards />
+
+          {/* Controls */}
+          <Box sx={{ mb: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              placeholder="Search entries..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search size={20} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flexGrow: 1 }}
+            />
+            
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Status Filter</InputLabel>
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                label="Status Filter"
+              >
+                <MenuItem value="all">All Status</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="failed">Failed</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Button
+              variant="contained"
+              startIcon={<Plus size={20} />}
+              onClick={() => setShowNewEntryDialog(true)}
+            >
+              New Entry
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<Download size={20} />}
+              onClick={handleExport}
+            >
+              Export
+            </Button>
+          </Box>
+
+          {/* Tabs */}
+          <Box sx={{ width: '100%', mb: 4 }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label="Table View" />
+              <Tab label="Chart View" />
+            </Tabs>
+
+            {/* Table View */}
+            <Box hidden={activeTab !== 0}>
+              {activeTab === 0 && (
+                <Paper sx={{ mt: 3 }}>
+                  {loading && <LinearProgress />}
+                  <Box sx={{ overflowX: 'auto' }}>
+                    <Box sx={{ minWidth: 800, p: 2 }}>
+                      {filteredEntries.map((entry) => (
+                        <Box
+                          key={entry.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            p: 2,
+                            borderBottom: 1,
+                            borderColor: 'divider',
+                            '&:last-child': {
+                              borderBottom: 0
+                            },
+                            '&:hover': {
+                              bgcolor: 'action.hover'
+                            }
+                          }}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="subtitle2">
+                              {format(new Date(entry.date), 'MMM dd, yyyy')}
+                            </Typography>
+                            <Typography color="textSecondary" variant="body2">
+                              {entry.reference}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ flex: 2 }}>
+                            <Typography>{entry.description}</Typography>
+                          </Box>
+                          
+                          <Box sx={{ flex: 1, textAlign: 'right' }}>
+                            <Typography
+                              color={entry.type === 'credit' ? 'success.main' : 'error.main'}
+                            >
+                              {entry.type === 'credit' ? '+' : '-'} UGX {entry.amount.toLocaleString()}
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              Balance: UGX {entry.balance.toLocaleString()}
+                            </Typography>
+                          </Box>
+                          
+                          <Box sx={{ width: 100, textAlign: 'center', mx: 2 }}>
+                            <StatusChip status={entry.status} />
+                          </Box>
+                          
+                          <Box>
+                            <IconButton
+                              size="small"
+                              onClick={(e) => handleMenuOpen(e, entry)}
+                            >
+                              <MoreVertical size={20} />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                </Paper>
+              )}
+            </Box>
+
+            {/* Chart View */}
+            <Box hidden={activeTab !== 1}>
+              {activeTab === 1 && (
+                <Paper sx={{ p: 3, mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Balance Trend
+                  </Typography>
+                  <Box sx={{ height: 400, mt: 2 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value) => [`UGX ${value.toLocaleString()}`, 'Balance']}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="balance" 
+                          stroke={theme.palette.primary.main}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Paper>
+              )}
+            </Box>
+          </Box>
+
+          {/* Entry Details Dialog */}
+          <Dialog 
+            open={showEntryDialog} 
+            onClose={() => setShowEntryDialog(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Entry Details</DialogTitle>
+            <DialogContent dividers>
+              {selectedEntry && (
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Date
+                    </Typography>
+                    <Typography>
+                      {format(new Date(selectedEntry.date), 'PPP')}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Reference
+                    </Typography>
+                    <Typography>{selectedEntry.reference}</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Description
+                    </Typography>
+                    <Typography>{selectedEntry.description}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Amount
+                    </Typography>
+                    <Typography color={selectedEntry.type === 'credit' ? 'success.main' : 'error.main'}>
+                      {selectedEntry.type === 'credit' ? '+' : '-'} UGX {selectedEntry.amount.toLocaleString()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Status
+                    </Typography>
+                    <StatusChip status={selectedEntry.status} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography color="textSecondary" gutterBottom>
+                      Notes
+                    </Typography>
+                    <Typography>{selectedEntry.notes || 'No notes provided'}</Typography>
+                  </Grid>
+                </Grid>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setShowEntryDialog(false)}>Close</Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* New Entry Dialog */}
+          <Dialog
+            open={showNewEntryDialog}
+            onClose={() => setShowNewEntryDialog(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>New Entry</DialogTitle>
+            <DialogContent dividers>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Date"
+                    type="date"
+                    value={newEntry.date}
+                    onChange={(e) => setNewEntry({...newEntry, date: e.target.value})}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={newEntry.type}
+                      label="Type"
+                      onChange={(e) => setNewEntry({...newEntry, type: e.target.value})}
+                    >
+                      <MenuItem value="debit">Debit</MenuItem>
+                      <MenuItem value="credit">Credit</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Description"
+                    value={newEntry.description}
+                    onChange={(e) => setNewEntry({...newEntry, description: e.target.value})}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Amount"
+                    type="number"
+                    value={newEntry.amount}
+                    onChange={(e) => setNewEntry({...newEntry, amount: e.target.value})}
+                    fullWidth
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Reference"
+                    value={newEntry.reference}
+                    onChange={(e) => setNewEntry({...newEntry, reference: e.target.value})}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Notes"
+                    value={newEntry.notes}
+                    onChange={(e) => setNewEntry({...newEntry, notes: e.target.value})}
+                    fullWidth
+                    multiline
+                    rows={3}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setShowNewEntryDialog(false)}>Cancel</Button>
+              <Button 
+                variant="contained" 
+                onClick={handleNewEntry}
+                disabled={!newEntry.description || !newEntry.amount}
+              >
+                Add Entry
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={() => setDeleteDialogOpen(false)}
+          >
+            <DialogTitle>Delete Entry</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this entry? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+              <Button 
+                color="error" 
+                onClick={handleDeleteEntry}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Action Menu */}
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem onClick={() => {
+              setShowEntryDialog(true);
+              handleMenuClose();
+            }}>
+              <Eye size={16} style={{ marginRight: 8 }} />
+              View Details
+            </MenuItem>
+            <MenuItem onClick={handleMenuClose}>
+              <Edit size={16} style={{ marginRight: 8 }} />
+              Edit Entry
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setEntryToDelete(selectedEntry);
+                setDeleteDialogOpen(true);
+                handleMenuClose();
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <Trash2 size={16} style={{ marginRight: 8 }} />
+              Delete Entry
+            </MenuItem>
+          </Menu>
+        </main>
       </div>
-
-      <LedgerTable />
-
-      {/* Entry Detail Dialog */}
-      <Dialog 
-        open={showEntryDialog} 
-        onClose={() => setShowEntryDialog(false)}
-      >
-        <DialogTitle>Entry Details</DialogTitle>
-        <DialogContent>
-          {selectedEntry && (
-            <div className="space-y-4">
-              <div>
-                <Typography className="text-sm text-gray-500">Date</Typography>
-                <Typography>{format(new Date(selectedEntry.date), 'PPP')}</Typography>
-              </div>
-              <div>
-                <Typography className="text-sm text-gray-500">Description</Typography>
-                <Typography>{selectedEntry.description}</Typography>
-              </div>
-              <div>
-                <Typography className="text-sm text-gray-500">Amount</Typography>
-                <Typography>UGX {selectedEntry.amount.toLocaleString()}</Typography>
-              </div>
-              <div>
-                <Typography className="text-sm text-gray-500">Reference</Typography>
-                <Typography>{selectedEntry.reference}</Typography>
-              </div>
-              <div>
-                <Typography className="text-sm text-gray-500">Notes</Typography>
-                <Typography>{selectedEntry.notes}</Typography>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button variant="outline" onClick={() => setShowEntryDialog(false)}>
-            Close
-          </Button>
-          <Button>Edit Entry</Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 };
