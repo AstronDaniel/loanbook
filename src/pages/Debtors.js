@@ -66,13 +66,16 @@ const DebtorsDashboard = () => {
   const [showAnalytics, setShowAnalytics] = useState(!isMobile);
   const [selectedDate, setSelectedDate] = useState(new Date('2024-01-01'));
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-
+const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // Summary statistics calculation
   const summaryStats = {
     totalPrincipal: debtors.reduce((sum, d) => sum + d.currentOpeningPrincipal, 0),
     totalInterest: debtors.reduce((sum, d) => sum + d.currentOpeningInterest, 0),
     activeDebtors: debtors.filter(d => d.status === 'active').length,
     totalPaid: debtors.reduce((sum, d) => sum + d.totalPrincipalPaid + d.totalInterestPaid, 0)
+  };
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   const fetchDebtors = async () => {
@@ -200,7 +203,16 @@ const DebtorsDashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen} 
+        toggleSidebar={toggleSidebar} 
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-4">
