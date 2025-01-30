@@ -10,7 +10,9 @@ import {
   Settings,
   LogOut,
   PersonStanding,
-  InfoIcon
+  InfoIcon,
+  Monitor,
+  
 
 } from 'lucide-react';
 
@@ -24,7 +26,8 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
     {name:'Debtors',icon:PersonStanding,path:'/debtors'},
     { name: 'Ledger', icon: BookOpen, path: '/ledger' },
     { name: 'Income Statement', icon: InfoIcon, path: '/incomeStatement' },
-    { name: 'Transactions', icon: DollarSign, path: '/transactions' },
+    { name: 'Capital Contributions', icon: Monitor, path: '/cContributions' },
+    { name: 'Retained Earnings', icon: DollarSign, path: '/rEarnings' },
     { name: 'Reports', icon: BarChart2, path: '/reports' },
     { name: 'Settings', icon: Settings, path: '/settings' },
   ];
