@@ -9,7 +9,8 @@ import {
   BarChart2,
   Settings,
   LogOut,
-  PersonStanding
+  PersonStanding,
+  InfoIcon
 
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar }) => {
     { name: 'Add Loan', icon: CreditCard, path: '/loan-management' },
     {name:'Debtors',icon:PersonStanding,path:'/debtors'},
     { name: 'Ledger', icon: BookOpen, path: '/ledger' },
+    { name: 'Income Statement', icon: InfoIcon, path: '/incomeStatement' },
     { name: 'Transactions', icon: DollarSign, path: '/transactions' },
     { name: 'Reports', icon: BarChart2, path: '/reports' },
     { name: 'Settings', icon: Settings, path: '/settings' },

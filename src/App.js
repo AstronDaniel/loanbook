@@ -10,6 +10,7 @@ import LoanManagement from './pages/LoanManagement';
 import Deptors from './pages/Debtors';
 import Ledger from './pages/Ledger';
 import Transactions from './pages/Transactions';
+import IncomeStatementDashboard from './pages/IncomeStatement';
 // import Reports from './pages/Reports';
 // import Settings from './pages/Settings';
 
@@ -25,6 +26,7 @@ function App() {
           <Route path="/loan-management" element={<LoanManagement />} />
           <Route path="/debtors" element={<Deptors />} />
           <Route path="/ledger" element={<Ledger />} />
+          <Route path="/incomeStatement" element={<IncomeStatementDashboard />} />
           <Route path="/transactions" element={<Transactions />} />
           {/* <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} /> */}

@@ -64,10 +64,16 @@ const Dashboard = () => {
     const loansSnapshot = await getDocs(collection(db, 'loans'));
     const loansData = loansSnapshot.docs.map(doc => doc.data());
 
+// to get duePayemnets
+const dueP = await getDocs(collection(db, 'debtors'));
+    const duePData = dueP.docs.map(doc => doc.data());
+// console.log(duePData.map((data) => data.currentOpeningPrincipal));
+const dues=duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrincipal), 0);
+// console.log("dues",dues);
     const totalLoans = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0);
     const activeBorrowers = loansData.length;
     const monthlyInterest = loansData.reduce((sum, loan) => sum + parseInt(loan.interestAmount), 0);
-    const duePayments = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0); // Assuming all loans are due
+    const duePayments =dues // Assuming all loans are due
 
     setStats({
       totalLoans,
