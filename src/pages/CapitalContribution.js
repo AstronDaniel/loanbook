@@ -157,7 +157,7 @@ const CapitalContributions = () => {
                                 </Typography>
                               </Box>
                               <Typography variant="h6" fontFamily="monospace">
-                                ${calculateLifetimeTotal(investor.id).toLocaleString()}
+                                UGX {calculateLifetimeTotal(investor.id).toLocaleString()}
                               </Typography>
                             </Box>
                           </Paper>
@@ -189,7 +189,7 @@ const CapitalContributions = () => {
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="h6" fontFamily="monospace">
-                              ${contributions[selectedMonth]?.[investor.id]?.toLocaleString() || 0}
+                              UGX {contributions[selectedMonth]?.[investor.id]?.toLocaleString() || 0}
                             </Typography>
                             <IconButton
                               size="small"
@@ -220,7 +220,7 @@ const CapitalContributions = () => {
                       Total Contributions for {format(date, 'MMMM yyyy')}:
                     </Typography>
                     <Typography variant="h5" fontFamily="monospace" fontWeight="bold">
-                      ${getMonthTotal(selectedMonth).toLocaleString()}
+                      UGX {getMonthTotal(selectedMonth).toLocaleString()}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -265,7 +265,7 @@ const CapitalContributions = () => {
                       <Typography><strong>Email:</strong> {selectedInvestor.email}</Typography>
                       <Typography><strong>Company:</strong> {selectedInvestor.company}</Typography>
                       <Typography>
-                        <strong>Lifetime Contribution:</strong> ${calculateLifetimeTotal(selectedInvestor.id).toLocaleString()}
+                        <strong>Lifetime Contribution:</strong> UGX {calculateLifetimeTotal(selectedInvestor.id).toLocaleString()}
                       </Typography>
                     </Stack>
                   )}

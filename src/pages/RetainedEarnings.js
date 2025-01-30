@@ -189,7 +189,7 @@ const RetainedEarnings = () => {
                               <Typography variant="subtitle1">Total Distributions</Typography>
                             </Box>
                             <Typography variant="h6" fontFamily="monospace">
-                              ${Math.abs(yearlyTotals.totalDistributions).toLocaleString()}
+                              UGX {Math.abs(yearlyTotals.totalDistributions).toLocaleString()}
                             </Typography>
                           </Box>
                         </Paper>
@@ -199,7 +199,7 @@ const RetainedEarnings = () => {
                               <Typography variant="subtitle1">Total Earnings</Typography>
                             </Box>
                             <Typography variant="h6" fontFamily="monospace">
-                              ${yearlyTotals.totalEarnings.toLocaleString()}
+                              UGX {yearlyTotals.totalEarnings.toLocaleString()}
                             </Typography>
                           </Box>
                         </Paper>
@@ -209,7 +209,7 @@ const RetainedEarnings = () => {
                               <Typography variant="subtitle1">Net Retained</Typography>
                             </Box>
                             <Typography variant="h6" fontFamily="monospace">
-                              ${yearlyTotals.netRetained.toLocaleString()}
+                            UGX {yearlyTotals.netRetained.toLocaleString()}
                             </Typography>
                           </Box>
                         </Paper>
@@ -248,17 +248,17 @@ const RetainedEarnings = () => {
                               <TableRow key={month}>
                                 <TableCell>{month}</TableCell>
                                 <TableCell align="right" sx={{ color: 'error.main' }}>
-                                  ${Math.abs(Object.values(data.distributions || {})
+                                  UGX {Math.abs(Object.values(data.distributions || {})
                                     .reduce((a, b) => a + b, 0)).toLocaleString()}
                                 </TableCell>
                                 <TableCell align="right" sx={{ color: 'success.main' }}>
-                                  ${data.earnings?.toLocaleString() || 0}
+                                  UGX {data.earnings?.toLocaleString() || 0}
                                 </TableCell>
                                 <TableCell align="right">
-                                  ${data.retainedEarnings?.toLocaleString() || 0}
+                                  UGX {data.retainedEarnings?.toLocaleString() || 0}
                                 </TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                  ${runningBalance.toLocaleString()}
+                                  UGX {runningBalance.toLocaleString()}
                                 </TableCell>
                                 <TableCell align="right">
                                   <IconButton
