@@ -14,7 +14,7 @@ import Ledger from './pages/Ledger';
 import IncomeStatementDashboard from './pages/IncomeStatement';
 import CapitalContribution from './pages/CapitalContribution';
 import RetainedEarnings from './pages/RetainedEarnings';
-import Reports from './pages/reports';
+import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import BalanceSheet from './pages/BalanceSheet';
 
