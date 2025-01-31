@@ -124,7 +124,8 @@ const MonthlyDetailsCard = () => {
                 <PieChart className="w-4 h-4 mr-2 text-blue-500" />
                 Financial Overview
               </h3>
-              <DollarSign className="w-5 h-5 text-green-500" />
+              {/* <DollarSign className="w-5 h-5 text-green-500" /> */}
+              <div className="w-5 h-5 text-green-500" >UGX</div>
             </div>
             <div className="space-y-2">
               {[
@@ -152,7 +153,9 @@ const MonthlyDetailsCard = () => {
                 <BarChart2 className="w-4 h-4 mr-2 text-purple-500" />
                 Performance Metrics
               </h3>
-              <DollarSign className="w-5 h-5 text-orange-500" />
+              {/* <DollarSign className="w-5 h-5 text-orange-500" /> */}
+              <div className="w-5 h-5 text-green-500x te" >UGX</div>
+
             </div>
             {financialMetrics && (
               <div className="space-y-2">
