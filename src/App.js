@@ -13,8 +13,8 @@ import Transactions from './pages/Transactions';
 import IncomeStatementDashboard from './pages/IncomeStatement';
 import CapitalContribution from './pages/CapitalContribution';
 import RetainedEarnings from './pages/RetainedEarnings';
-// import Reports from './pages/Reports';
- import Settings from './pages/Settings';
+import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -32,7 +32,7 @@ function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/cContributions" element={<CapitalContribution />} />
           <Route path="/rEarnings" element={<RetainedEarnings />} />
-          {/* <Route path="/reports" element={<Reports />} /> */}
+           <Route path="/reports" element={<Reports />} /> 
           <Route path="/settings" element={<Settings />} /> 
         </Routes>
       </div>
