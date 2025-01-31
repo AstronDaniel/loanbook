@@ -150,6 +150,11 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     setSortOrder(order);
   };
 
+  const extractNumber = (str) => {
+    const match = str.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
+
   const handleFilterChange = (status) => {
     setFilterStatus(status);
   };
@@ -163,10 +168,20 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     );
 
   const sortedDebtors = [...filteredDebtors].sort((a, b) => {
-    if (sortOrder === 'asc') {
-      return a[sortField] > b[sortField] ? 1 : -1;
+    if (sortField === 'customerName') {
+      const numA = extractNumber(a.customerName);
+      const numB = extractNumber(b.customerName);
+      if (sortOrder === 'asc') {
+        return numA - numB;
+      } else {
+        return numB - numA;
+      }
     } else {
-      return a[sortField] < b[sortField] ? 1 : -1;
+      if (sortOrder === 'asc') {
+        return a[sortField] > b[sortField] ? 1 : -1;
+      } else {
+        return a[sortField] < b[sortField] ? 1 : -1;
+      }
     }
   });
 
