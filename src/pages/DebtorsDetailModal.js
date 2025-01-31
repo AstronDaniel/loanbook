@@ -63,6 +63,7 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
     principalAdvance: "",
     interestCharge: "",
   });
+  const [editRecord, setEditRecord] = useState(null);
 
   useEffect(() => {
     if (debtor) {
@@ -245,6 +246,43 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
       setSnackbar({
         open: true,
         message: 'Error rolling back transaction: ' + (error.message || 'Unknown error'),
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditRecordChange = (field, value) => {
+    setEditRecord({ ...editRecord, [field]: value });
+  };
+
+  const handleSaveRecord = async () => {
+    try {
+      setLoading(true);
+      const updatedRecords = debtor.monthlyRecords.map(record =>
+        record.id === editRecord.id ? editRecord : record
+      );
+
+      const updatedDebtor = {
+        ...debtor,
+        monthlyRecords: updatedRecords,
+        currentOpeningPrincipal: updatedRecords[updatedRecords.length - 1].outstandingPrinciple,
+        currentOpeningInterest: updatedRecords[updatedRecords.length - 1].outstandingInterest,
+        lastUpdated: new Date().toISOString()
+      };
+
+      await onUpdateDebtor(updatedDebtor);
+      setEditRecord(null);
+      setSnackbar({
+        open: true,
+        message: 'Record updated successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error updating record: ' + (error.message || 'Unknown error'),
         severity: 'error'
       });
     } finally {
@@ -531,6 +569,7 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                       <TableCell align="right">Interest Paid</TableCell>
                       <TableCell align="right">Outstanding Principal</TableCell>
                       <TableCell align="right">Outstanding Interest</TableCell>
+                      <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -564,11 +603,74 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                         <TableCell align="right">
                           {formatCurrency(record.outstandingInterest)}
                         </TableCell>
+                        <TableCell align="right">
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={() => setEditRecord(record)}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </TableContainer>
+            )}
+
+            {editRecord && (
+              <Dialog open={Boolean(editRecord)} onClose={() => setEditRecord(null)}>
+                <DialogTitle>Edit Record</DialogTitle>
+                <DialogContent>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Principal Advance"
+                        type="text"
+                        value={formatNumberWithCommas(editRecord.principleAdvance.toString())}
+                        onChange={(e) => handleEditRecordChange('principleAdvance', e.target.value.replace(/,/g, ''))}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Principal Paid"
+                        type="text"
+                        value={formatNumberWithCommas(editRecord.principlePaid.toString())}
+                        onChange={(e) => handleEditRecordChange('principlePaid', e.target.value.replace(/,/g, ''))}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Interest Charge"
+                        type="text"
+                        value={formatNumberWithCommas(editRecord.interestCharge.toString())}
+                        onChange={(e) => handleEditRecordChange('interestCharge', e.target.value.replace(/,/g, ''))}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Interest Paid"
+                        type="text"
+                        value={formatNumberWithCommas(editRecord.intrestPaid.toString())}
+                        onChange={(e) => handleEditRecordChange('intrestPaid', e.target.value.replace(/,/g, ''))}
+                      />
+                    </Grid>
+                  </Grid>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setEditRecord(null)} color="secondary">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveRecord} color="primary">
+                    Save
+                  </Button>
+                </DialogActions>
+              </Dialog>
             )}
 
             {activeTab === 2 && (
