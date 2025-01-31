@@ -211,6 +211,47 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
     }
   };
 
+  const handleRollback = async () => {
+    if (debtor.monthlyRecords.length <= 1) {
+      setSnackbar({
+        open: true,
+        message: 'No transactions to roll back',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const updatedRecords = debtor.monthlyRecords.slice(0, -1);
+      const lastRecord = updatedRecords[updatedRecords.length - 1];
+
+      const updatedDebtor = {
+        ...debtor,
+        monthlyRecords: updatedRecords,
+        currentOpeningPrincipal: lastRecord.outstandingPrinciple,
+        currentOpeningInterest: lastRecord.outstandingInterest,
+        lastUpdated: new Date().toISOString()
+      };
+
+      await onUpdateDebtor(updatedDebtor);
+
+      setSnackbar({
+        open: true,
+        message: 'Transaction rolled back successfully',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error rolling back transaction: ' + (error.message || 'Unknown error'),
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -682,6 +723,25 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                         }}
                       >
                         {loading ? "Saving Transaction..." : "Save Transaction"}
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        fullWidth
+                        onClick={handleRollback}
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                        sx={{
+                          py: 1.5,
+                          transition: 'transform 0.2s',
+                          '&:not(:disabled):hover': {
+                            transform: 'translateY(-2px)'
+                          }
+                        }}
+                      >
+                        Rollback Last Transaction
                       </Button>
                     </Grid>
                   </Grid>
