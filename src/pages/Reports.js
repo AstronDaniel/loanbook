@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Card, Button, Select, MenuItem, InputLabel, FormControl, TextField } from '@material-ui/core';
-import { DatePicker } from '@material-ui/pickers';
+import { Box, Card, Button, Select, MenuItem, InputLabel, FormControl, TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
