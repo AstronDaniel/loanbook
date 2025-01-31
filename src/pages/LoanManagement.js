@@ -17,7 +17,9 @@ import {
   Grid,
   Snackbar,
   CircularProgress,
+  InputAdornment
 } from '@mui/material';
+import { Search as SearchIcon } from '@mui/icons-material';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 
@@ -41,8 +43,9 @@ const LoanManagement = () => {
   const [loading, setLoading] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [sortField, setSortField] = useState('startDate');
+  const [sortField, setSortField] = useState('customerName');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -224,11 +227,31 @@ const LoanManagement = () => {
     setSortOrder(order);
   };
 
-  const sortedLoans = [...loans].sort((a, b) => {
-    if (sortOrder === 'asc') {
-      return a[sortField] > b[sortField] ? 1 : -1;
+  const extractNumber = (str) => {
+    const match = str.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
+
+  const filteredLoans = loans
+    .filter(loan => 
+      loan.customerName && loan.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+  const sortedLoans = [...filteredLoans].sort((a, b) => {
+    if (sortField === 'customerName') {
+      const numA = extractNumber(a.customerName);
+      const numB = extractNumber(b.customerName);
+      if (sortOrder === 'asc') {
+        return numA - numB;
+      } else {
+        return numB - numA;
+      }
     } else {
-      return a[sortField] < b[sortField] ? 1 : -1;
+      if (sortOrder === 'asc') {
+        return a[sortField] > b[sortField] ? 1 : -1;
+      } else {
+        return a[sortField] < b[sortField] ? 1 : -1;
+      }
     }
   });
 
@@ -334,6 +357,23 @@ const LoanManagement = () => {
           {/* Recent Loans Table */}
           <Paper elevation={3} className="p-4">
             <Typography variant="h6" className="mb-4">Recent Loans</Typography>
+            <Box className="mb-4">
+              <TextField
+                fullWidth
+                size="medium"
+                placeholder="Search loans..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                variant="outlined"
+              />
+            </Box>
             <Box className="overflow-x-auto">
               <Table className="min-w-full bg-white" size="small">
                 <TableHead>
