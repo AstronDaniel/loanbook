@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
+import OverdueDebtorsCard from '../components/OverdueDebtorsCard'; // Import the new component
 
 const db = getFirestore(app);
 
@@ -32,15 +32,6 @@ const Dashboard = () => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
   
-  const performanceData = [
-    { name: 'Jan', income: 4000000, expenses: 2400000 },
-    { name: 'Feb', income: 3000000, expenses: 1398000 },
-    { name: 'Mar', income: 2000000, expenses: 9800000 },
-    { name: 'Apr', income: 2780000, expenses: 3908000 },
-    { name: 'May', income: 1890000, expenses: 4800000 },
-    { name: 'Jun', income: 2390000, expenses: 3800000 },
-  ];
-
   const pieData = [
     { name: 'Cash at Hand', value: 4000000 },
     { name: 'Cash at Bank', value: 3000000 },
@@ -64,16 +55,15 @@ const Dashboard = () => {
     const loansSnapshot = await getDocs(collection(db, 'loans'));
     const loansData = loansSnapshot.docs.map(doc => doc.data());
 
-// to get duePayemnets
-const dueP = await getDocs(collection(db, 'debtors'));
+    // to get duePayemnets
+    const dueP = await getDocs(collection(db, 'debtors'));
     const duePData = dueP.docs.map(doc => doc.data());
-// console.log(duePData.map((data) => data.currentOpeningPrincipal));
-const dues=duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrincipal), 0);
-// console.log("dues",dues);
+    const dues = duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrincipal), 0);
+
     const totalLoans = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0);
     const activeBorrowers = loansData.length;
     const monthlyInterest = loansData.reduce((sum, loan) => sum + parseInt(loan.interestAmount), 0);
-    const duePayments =dues // Assuming all loans are due
+    const duePayments = dues; // Assuming all loans are due
 
     setStats({
       totalLoans,
@@ -169,25 +159,10 @@ const dues=duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrin
             </div>
           </div>
 
-          {/* Charts Section */}
+          {/* Overdue Debtors Card */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Performance Chart */}
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">Financial Performance</h3>
-              <div className="h-60 md:h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="income" fill="#0088FE" />
-                    <Bar dataKey="expenses" fill="#FF8042" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
+            <OverdueDebtorsCard />
+            
             {/* Asset Distribution */}
             <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
               <h3 className="text-lg font-semibold mb-4">Asset Distribution</h3>

@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper
-} from '@mui/material';
-import Sidebar from '../components/SideBar'; // Adjust the path as necessary
-import Header from '../components/Header';   // Adjust the path as necessary
+import { Card, CardContent, Typography, Box, Grid, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import Sidebar from '../components/SideBar';
+import Header from '../components/Header';
 import { localStorageService } from '../services/localStorage';
 
 const BalanceSheet = () => {
@@ -35,21 +22,21 @@ const BalanceSheet = () => {
 
       // Calculate assets, liabilities, and equity
       const assetsData = [
-        { name: 'Cash', amount: 50000 },
-        { name: 'Accounts Receivable', amount: 30000 },
-        { name: 'Inventory', amount: 20000 },
-        // Add more assets as needed
+        { name: 'Debtors', amount: 593441756 },
+        { name: 'Interest Receivable', amount: 0 },
+        { name: 'Cash at Bank', amount: 41483714 },
+        { name: 'Cash at Hand', amount: 0 },
       ];
 
       const liabilitiesData = [
-        { name: 'Accounts Payable', amount: 15000 },
-        { name: 'Loans Payable', amount: 25000 },
-        // Add more liabilities as needed
+        { name: 'Liabilities', amount: 0 },
+        { name: 'Payables', amount: 0 },
+        { name: 'Interest Payable', amount: 0 },
       ];
 
       const equityData = [
-        { name: 'Owner\'s Equity', amount: 40000 },
-        // Add more equity items as needed
+        { name: 'Capital', amount: 490500000 },
+        { name: 'Retained Earnings', amount: 119110767 },
       ];
 
       setAssets(assetsData);
@@ -126,16 +113,16 @@ const BalanceSheet = () => {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {liabilities.map((liability) => (
-                            <TableRow key={liability.name}>
-                              <TableCell>{liability.name}</TableCell>
-                              <TableCell align="right">{liability.amount.toLocaleString()}</TableCell>
-                            </TableRow>
-                          ))}
                           {equity.map((eq) => (
                             <TableRow key={eq.name}>
                               <TableCell>{eq.name}</TableCell>
                               <TableCell align="right">{eq.amount.toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))}
+                          {liabilities.map((liability) => (
+                            <TableRow key={liability.name}>
+                              <TableCell>{liability.name}</TableCell>
+                              <TableCell align="right">{liability.amount.toLocaleString()}</TableCell>
                             </TableRow>
                           ))}
                           <TableRow>
