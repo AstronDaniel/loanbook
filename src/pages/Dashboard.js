@@ -113,7 +113,10 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total Loans</p>
+                  <p className="text-xs md:text-sm text-gray-600">
+                    {/* Total Loans */}
+                    Principal Advanced
+                    </p>
                   <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.totalLoans)}</p>
                 </div>
                 <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
@@ -137,7 +140,7 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Monthly Interest</p>
+                  <p className="text-xs md:text-sm text-gray-600">Interest Charged Year To Date</p>
                   <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.monthlyInterest)}</p>
                 </div>
                 <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
@@ -200,12 +203,12 @@ const Dashboard = () => {
           <MonthlyDetailsCard />
 
           {/* Recent Transactions */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Recent Transactions</h3>
                 <button className="text-blue-600 text-sm hover:underline">View All</button>
-              </div>
+              </div> */}
               
               {/* Mobile Transaction Cards */}
               {/* <div className="md:hidden space-y-4">
@@ -272,8 +275,8 @@ const Dashboard = () => {
                   </tbody>
                 </table>
               </div> */}
-            </div>
-          </div>
+            {/* </div>
+          </div> */}
         </main>
       </div>
     </div>
