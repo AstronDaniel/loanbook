@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import React from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
@@ -19,31 +18,11 @@ import Settings from './pages/Settings';
 import BalanceSheet from './pages/BalanceSheet';
 
 const App = () => {
-  const [darkMode, setDarkMode] = useState(false);
-
-  const theme = createTheme({
-    palette: {
-      mode: darkMode ? 'dark' : 'light',
-      background: {
-        default: darkMode ? '#0b1019' : '#ffffff',
-      },
-    },
-  });
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <CssBaseline />
       <Router>
         <div className="App">
-          <header className="app-header">
-            <button onClick={toggleDarkMode}>
-              {darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            </button>
-          </header>
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
@@ -57,11 +36,11 @@ const App = () => {
             <Route path="/rEarnings" element={<RetainedEarnings />} />
             <Route path="/bSheet" element={<BalanceSheet />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
       </Router>
-    </ThemeProvider>
+    </>
   );
 };
 

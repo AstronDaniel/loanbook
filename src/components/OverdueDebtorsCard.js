@@ -198,11 +198,14 @@ const OverdueDebtorsCard = () => {
   return (
     <>
       {renderContent()}
-      {selectedDebtor && (
+      {isModalOpen && selectedDebtor && (
         <DebtorManagementModal 
           debtor={selectedDebtor} 
           onExtend={handleExtend} 
-          onClose={() => setIsModalOpen(false)} 
+          onClose={() => {
+            setIsModalOpen(false);
+            console.log("Close modal");
+          }} 
         />
       )}
     </>

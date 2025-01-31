@@ -1,5 +1,5 @@
 // src/utils/formatting.js
-export const formatCurrency = (amount, currency = 'UGX', locale = 'en-UG') => {
+export const formatCurrency = (amount, currency = 'UGX', locale = 'en-US') => {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency,

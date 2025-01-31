@@ -4,7 +4,8 @@ import {
   Calendar, 
   Info, 
   CheckCircle, 
-  AlertTriangle 
+  AlertTriangle, 
+  X 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatCurrency } from '../utils/formating';
@@ -24,6 +25,7 @@ const DebtorManagementModal = ({ debtor, onExtend, onClose }) => {
       dueDate,
       notes
     });
+    onClose(); // Ensure the modal closes after extending
   };
 
   return (
@@ -40,11 +42,16 @@ const DebtorManagementModal = ({ debtor, onExtend, onClose }) => {
         transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
       >
         {/* Header */}
-        <div className="bg-blue-600 text-white p-6 flex items-center">
-          <Info className="w-6 h-6 mr-3" />
-          <h2 className="text-xl font-bold">
-            Debtor Management: {debtor.customerName}
-          </h2>
+        <div className="bg-blue-600 text-white p-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <Info className="w-6 h-6 mr-3" />
+            <h2 className="text-xl font-bold">
+              Debtor Management: {debtor.customerName}
+            </h2>
+          </div>
+          <button onClick={onClose} className="text-white hover:text-gray-200">
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
         {/* Content Grid */}
