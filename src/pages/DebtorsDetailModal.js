@@ -591,9 +591,9 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                   <TableHead>
                     <TableRow>
                       <TableCell>Date</TableCell>
-                      <TableCell align="right">Principal Advance</TableCell>
+                      <TableCell align="right">Principal Advanced</TableCell>
                       <TableCell align="right">Principal Paid</TableCell>
-                      <TableCell align="right">Interest Charge</TableCell>
+                      <TableCell align="right">Interest Charged</TableCell>
                       <TableCell align="right">Interest Paid</TableCell>
                       <TableCell align="right">Outstanding Principal</TableCell>
                       <TableCell align="right">Outstanding Interest</TableCell>

@@ -78,6 +78,7 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     activeDebtors: debtors.filter(d => d.status === 'active').length,
     totalPaid: debtors.reduce((sum, d) => sum + d.totalPrincipalPaid + d.totalInterestPaid, 0)
   };
+  console.log("sumaary stats: ",summaryStats,debtors);
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -393,7 +394,8 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <Box>
                       <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                        UGX {summaryStats.totalPaid.toLocaleString()}
+                        UGX {summaryStats.totalPaid.toLocaleString()} 
+                           {console.log("total paid: ",summaryStats.totalPaid)}
                       </Typography>
                       <Typography variant="body2">
                         Total Paid
@@ -402,6 +404,7 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
                         <TrendingUpIcon sx={{ mr: 1, fontSize: 20 }} />
                         <Typography variant="body2">
                           {((summaryStats.totalPaid / filteredDebtors.length) / 1000000).toFixed(1)}M average
+                      
                         </Typography>
                       </Box>
                     </Box>
