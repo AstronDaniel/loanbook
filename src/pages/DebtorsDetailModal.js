@@ -42,6 +42,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, isAfter, isBefore, parseISO } from "date-fns";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { app } from "../firebase"; // Adjust the path as necessary
+
+const db = getFirestore(app);
 
 const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
   const theme = useTheme();
@@ -64,6 +68,7 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
     interestCharge: "",
   });
   const [editRecord, setEditRecord] = useState(null);
+  const [loanDueDate, setLoanDueDate] = useState(null);
 
   useEffect(() => {
     if (debtor) {
@@ -71,6 +76,19 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
       resetForm();
     }
   }, [debtor?.id]);
+
+  useEffect(() => {
+    const fetchLoanDueDate = async () => {
+      if (debtor?.loanId) {
+        const loanDoc = await getDoc(doc(db, "loans", debtor.loanId));
+        if (loanDoc.exists()) {
+          setLoanDueDate(loanDoc.data().dueDate);
+        }
+      }
+    };
+
+    fetchLoanDueDate();
+  }, [debtor?.loanId]);
 
   const resetForm = () => {
     setNewPayment({
@@ -171,6 +189,11 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
         currentOpeningPrincipal: newRecord.outstandingPrinciple,
         currentOpeningInterest: newRecord.outstandingInterest,
         lastUpdated: new Date().toISOString(),
+        status: newRecord.outstandingPrinciple === 0 && newRecord.outstandingInterest === 0
+          ? 'completed'
+          : new Date() > new Date(loanDueDate) && (newRecord.outstandingPrinciple > 0 || newRecord.outstandingInterest > 0)
+          ? 'overdue'
+          : debtor.status
       };
 
       await onUpdateDebtor(updatedDebtor);
@@ -269,7 +292,12 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
         monthlyRecords: updatedRecords,
         currentOpeningPrincipal: updatedRecords[updatedRecords.length - 1].outstandingPrinciple,
         currentOpeningInterest: updatedRecords[updatedRecords.length - 1].outstandingInterest,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        status: updatedRecords[updatedRecords.length - 1].outstandingPrinciple === 0 && updatedRecords[updatedRecords.length - 1].outstandingInterest === 0
+          ? 'completed'
+          : new Date() > new Date(loanDueDate) && (updatedRecords[updatedRecords.length - 1].outstandingPrinciple > 0 || updatedRecords[updatedRecords.length - 1].outstandingInterest > 0)
+          ? 'overdue'
+          : debtor.status
       };
 
       await onUpdateDebtor(updatedDebtor);

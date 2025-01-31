@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Grid, Button, TextField, LinearProgress, Chip, Snackbar, CircularProgress, IconButton, useMediaQuery, styled, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, useTheme, Card, CardContent, Select, MenuItem
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getFirestore, collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
 import { app } from '../firebase';
@@ -106,6 +106,10 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
       const debtorRef = doc(db, 'debtors', selectedDebtor.id);
       const lastRecord = selectedDebtor.monthlyRecords.slice(-1)[0];
       
+      // Fetch the due date from the loan document
+      const loanDoc = await getDoc(doc(db, 'loans', selectedDebtor.loanId));
+      const loanDueDate = loanDoc.exists() ? loanDoc.data().dueDate : null;
+
       const newRecord = {
         id: selectedDebtor.monthlyRecords.length,
         date: transactionDate.toISOString().split('T')[0], // Use selected transaction date
@@ -126,7 +130,12 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
         currentOpeningPrincipal: newRecord.outstandingPrinciple,
         currentOpeningInterest: newRecord.outstandingInterest,
         totalPrincipalPaid: selectedDebtor.totalPrincipalPaid + Number(newPayment.principal),
-        totalInterestPaid: selectedDebtor.totalInterestPaid + Number(newPayment.interest)
+        totalInterestPaid: selectedDebtor.totalInterestPaid + Number(newPayment.interest),
+        status: newRecord.outstandingPrinciple === 0 && newRecord.outstandingInterest === 0
+          ? 'completed'
+          : new Date() > new Date(loanDueDate) && (newRecord.outstandingPrinciple > 0 || newRecord.outstandingInterest > 0)
+          ? 'overdue'
+          : selectedDebtor.status
       };
 
       await updateDoc(debtorRef, updatedDebtor);
