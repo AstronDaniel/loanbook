@@ -7,13 +7,15 @@ import {
   Button,
   Box,
   Grid,
-  Snackbar
+  Snackbar,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import { getAuth, updateProfile, updatePassword } from 'firebase/auth';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 
-const Settings = () => {
+const Settings = ({ darkMode, toggleDarkMode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [displayName, setDisplayName] = useState('');
@@ -127,6 +129,25 @@ const Settings = () => {
                     Change Password
                   </Button>
                 </Box>
+              </CardContent>
+            </Card>
+
+            <Card sx={{ mt: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Appearance
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={darkMode}
+                      onChange={toggleDarkMode}
+                      name="darkMode"
+                      color="primary"
+                    />
+                  }
+                  label="Dark Mode"
+                />
               </CardContent>
             </Card>
           </Box>
