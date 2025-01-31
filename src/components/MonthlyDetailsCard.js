@@ -18,7 +18,8 @@ const MonthlyDetailsCard = () => {
         const year = selectedDate.getFullYear();
         const monthString = `${year}-${month < 10 ? '0' : ''}${month}`;
 
-        const querySnapshot = await getDocs(collection(db, 'debtors'));
+        const q = query(collection(db, 'debtors'), where('monthlyRecords.month', '==', monthString));
+        const querySnapshot = await getDocs(q);
         const details = querySnapshot.docs.flatMap(doc => 
           doc.data().monthlyRecords.filter(record => record.month === monthString)
         );
