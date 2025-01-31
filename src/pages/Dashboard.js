@@ -6,6 +6,7 @@ import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react'
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 import OverdueDebtorsCard from '../components/OverdueDebtorsCard'; // Import the new component
+import MonthlyDetailsCard from '../components/MonthlyDetailsCard'; // Import the new component
 
 const db = getFirestore(app);
 
@@ -195,6 +196,9 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Monthly Details Card */}
+          <MonthlyDetailsCard />
+
           {/* Recent Transactions */}
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 md:p-6">
@@ -204,7 +208,7 @@ const Dashboard = () => {
               </div>
               
               {/* Mobile Transaction Cards */}
-              <div className="md:hidden space-y-4">
+              {/* <div className="md:hidden space-y-4">
                 {recentTransactions.map((transaction) => (
                   <div key={transaction.id} className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
@@ -229,10 +233,10 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ))}
-              </div>
+              </div> */}
 
               {/* Desktop Transaction Table */}
-              <div className="hidden md:block overflow-x-auto">
+              {/* <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="text-left text-sm text-gray-500 border-b">
@@ -267,7 +271,7 @@ const Dashboard = () => {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </div> */}
             </div>
           </div>
         </main>
