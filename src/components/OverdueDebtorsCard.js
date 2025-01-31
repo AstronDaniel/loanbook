@@ -13,11 +13,10 @@ import { app } from '../firebase';
 import { 
   AlertTriangle, 
   User, 
-  Calendar, 
-  DollarSign, 
   FileText, 
   Send 
 } from 'lucide-react';
+import DebtorManagementModal from './DebtorManagementModal';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
@@ -27,6 +26,8 @@ const OverdueDebtorsCard = () => {
   const [overdueDebtors, setOverdueDebtors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedDebtor, setSelectedDebtor] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchOverdueDebtors = async () => {
@@ -59,86 +60,47 @@ const OverdueDebtorsCard = () => {
     fetchOverdueDebtors();
   }, []);
 
-  const handleDebtorClick = async (debtor) => {
-    const { value: formValues } = await MySwal.fire({
-      title: `<strong>Debtor Management: ${debtor.customerName}</strong>`,
-      html: `
-        <div class="grid grid-cols-2 gap-4 text-left">
-          <div>
-            <h3 class="font-bold mb-2 flex items-center">
-              <DollarSign class="w-4 h-4 mr-2" />
-              Financial Details
-            </h3>
-            <p>Outstanding Principal: UGX ${debtor.currentOpeningPrincipal.toLocaleString()}</p>
-            <p>Outstanding Interest: UGX ${debtor.currentOpeningInterest.toLocaleString()}</p>
-            <p>Total Principal Paid: UGX ${debtor.totalPrincipalPaid.toLocaleString()}</p>
-            <p>Total Interest Paid: UGX ${debtor.totalInterestPaid.toLocaleString()}</p>
+  const handleDebtorClick = (debtor) => {
+    setSelectedDebtor(debtor);
+    setIsModalOpen(true);
+  };
+
+  const handleExtend = async ({ dueDate, notes }) => {
+    try {
+      const db = getFirestore(app);
+      const debtorRef = doc(db, 'debtors', selectedDebtor.id);
+      
+      // Update debtor's due date
+      await updateDoc(debtorRef, { 
+        dueDate: dueDate,
+        status: 'extended'
+      });
+
+      // Log communication history
+      await addDoc(collection(db, 'communicationLogs'), {
+        debtorId: selectedDebtor.id,
+        customerName: selectedDebtor.customerName,
+        actionType: 'due_date_extension',
+        notes: notes,
+        extendedDate: dueDate,
+        timestamp: new Date()
+      });
+
+      await MySwal.fire({
+        title: 'Extension Processed',
+        html: `
+          <div class="text-left">
+            <p>Due date for <strong>${selectedDebtor.customerName}</strong> extended to ${dueDate}</p>
+            <p class="text-sm text-gray-600 mt-2">Communication log created successfully</p>
           </div>
-          <div>
-            <h3 class="font-bold mb-2 flex items-center">
-              <Calendar class="w-4 h-4 mr-2" />
-              Extend Due Date
-            </h3>
-            <input 
-              type="date" 
-              id="dueDate" 
-              class="swal2-input w-full" 
-              placeholder="Select New Due Date"
-            />
-            <textarea 
-              id="notes" 
-              class="swal2-input w-full mt-2" 
-              placeholder="Additional Notes (Optional)"
-            ></textarea>
-          </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Extend & Notify',
-      cancelButtonText: 'Cancel',
-      preConfirm: () => {
-        const dueDate = document.getElementById('dueDate').value;
-        const notes = document.getElementById('notes').value;
-        return { dueDate, notes };
-      }
-    });
+        `,
+        icon: 'success'
+      });
 
-    if (formValues) {
-      try {
-        const db = getFirestore(app);
-        const debtorRef = doc(db, 'debtors', debtor.id);
-        
-        // Update debtor's due date
-        await updateDoc(debtorRef, { 
-          dueDate: formValues.dueDate,
-          status: 'extended'
-        });
-
-        // Log communication history
-        await addDoc(collection(db, 'communicationLogs'), {
-          debtorId: debtor.id,
-          customerName: debtor.customerName,
-          actionType: 'due_date_extension',
-          notes: formValues.notes,
-          extendedDate: formValues.dueDate,
-          timestamp: new Date()
-        });
-
-        await MySwal.fire({
-          title: 'Extension Processed',
-          html: `
-            <div class="text-left">
-              <p>Due date for <strong>${debtor.customerName}</strong> extended to ${formValues.dueDate}</p>
-              <p class="text-sm text-gray-600 mt-2">Communication log created successfully</p>
-            </div>
-          `,
-          icon: 'success'
-        });
-      } catch (err) {
-        console.error('Error updating debtor:', err);
-        MySwal.fire('Error', 'Failed to process extension', 'error');
-      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error updating debtor:', err);
+      MySwal.fire('Error', 'Failed to process extension', 'error');
     }
   };
 
@@ -233,7 +195,18 @@ const OverdueDebtorsCard = () => {
     );
   };
 
-  return renderContent();
+  return (
+    <>
+      {renderContent()}
+      {selectedDebtor && (
+        <DebtorManagementModal 
+          debtor={selectedDebtor} 
+          onExtend={handleExtend} 
+          onClose={() => setIsModalOpen(false)} 
+        />
+      )}
+    </>
+  );
 };
 
 export default OverdueDebtorsCard;
