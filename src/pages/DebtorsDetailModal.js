@@ -1,36 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, Box, Grid, TextField, IconButton,
-  Table, TableBody, TableCell, TableHead, TableRow,
-  Paper, Tabs, Tab, Alert, CircularProgress,
-  useTheme, useMediaQuery, Snackbar, TableContainer,
-  Fade
-} from '@mui/material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import CloseIcon from '@mui/icons-material/Close';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { format, isAfter, isBefore, parseISO } from 'date-fns';
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+  Box,
+  Grid,
+  TextField,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Paper,
+  Tabs,
+  Tab,
+  Alert,
+  CircularProgress,
+  useTheme,
+  useMediaQuery,
+  Snackbar,
+  TableContainer,
+  Fade,
+} from "@mui/material";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
+import SaveIcon from "@mui/icons-material/Save";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { format, isAfter, isBefore, parseISO } from "date-fns";
 
 const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isMedium = useMediaQuery(theme.breakpoints.down('md'));
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMedium = useMediaQuery(theme.breakpoints.down("md"));
+
   const [activeTab, setActiveTab] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
   const [transactionInProgress, setTransactionInProgress] = useState(false);
   const [newPayment, setNewPayment] = useState({
-    principalPaid: '',
-    interestPaid: '',
-    principalAdvance: '',
-    interestCharge: ''
+    principalPaid: "",
+    interestPaid: "",
+    principalAdvance: "",
+    interestCharge: "",
   });
 
   useEffect(() => {
@@ -42,33 +73,32 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
 
   const resetForm = () => {
     setNewPayment({
-      principalPaid: '',
-      interestPaid: '',
-      principalAdvance: '',
-      interestCharge: ''
+      principalPaid: "",
+      interestPaid: "",
+      principalAdvance: "",
+      interestCharge: "",
     });
     setActiveTab(0);
   };
 
   const validateTransaction = () => {
     const errors = [];
-    
-    if (!Object.values(newPayment).some(val => val !== '')) {
-      errors.push('Please enter at least one value');
+
+    if (!Object.values(newPayment).some((val) => val !== "")) {
+      errors.push("Please enter at least one value");
     }
 
     // Only check date constraints if we have records
     if (debtor?.monthlyRecords?.length > 0) {
-      const firstRecordDate = new Date(debtor.monthlyRecords[0].date);
-      console.log('First record date:', firstRecordDate);
-      console.log('Selected date:', selectedDate);
-      if (selectedDate && isBefore(selectedDate, firstRecordDate)) {
-        errors.push('Transaction date cannot be before the first record');
-      }
+      // Temporarily ignore this validation
+      // const firstRecordDate = new Date(debtor.monthlyRecords[0].date);
+      // if (selectedDate && isBefore(selectedDate, firstRecordDate)) {
+      //   errors.push('Transaction date cannot be before the first record');
+      // }
     }
 
     if (selectedDate && isAfter(selectedDate, new Date())) {
-      errors.push('Transaction date cannot be in the future');
+      errors.push("Transaction date cannot be in the future");
     }
 
     return errors;
@@ -80,62 +110,100 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
       setSnackbar({
         open: true,
         message: errors[0],
-        severity: 'error'
+        severity: "error",
       });
       return;
     }
 
+    let newRecord;
     try {
       setLoading(true);
       setTransactionInProgress(true);
+      // Replace this part in handleNewPayment:
+      const lastRecord =
+        debtor.monthlyRecords[debtor.monthlyRecords.length - 1];
 
-      const lastRecord = debtor.monthlyRecords[debtor.monthlyRecords.length - 1];
-      const newRecord = {
-        id: Date.now(), // Using timestamp as unique ID
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        month: format(selectedDate, 'yyyy-MM'),
-        openingPrinciple: lastRecord.outstandingPrinciple,
+      // With this:
+      // First, sort the existing records by date
+      const sortedRecords = [...debtor.monthlyRecords].sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+      );
+
+      // Find the record that comes immediately before the selected date
+      const previousRecord = sortedRecords
+        .filter((record) => isBefore(new Date(record.date), selectedDate))
+        .pop();
+
+      // If no previous record exists, use the last record
+      const referenceRecord =
+        previousRecord || sortedRecords[sortedRecords.length - 1];
+
+      // Then use referenceRecord instead of lastRecord
+      newRecord = {
+        id: Date.now(),
+        date: format(selectedDate, "yyyy-MM-dd"),
+        month: format(selectedDate, "yyyy-MM"),
+        openingPrinciple: referenceRecord.outstandingPrinciple,
         principleAdvance: Number(newPayment.principalAdvance) || 0,
         principlePaid: Number(newPayment.principalPaid) || 0,
-        outstandingPrinciple: lastRecord.outstandingPrinciple + 
-          (Number(newPayment.principalAdvance) || 0) - 
+        outstandingPrinciple:
+          referenceRecord.outstandingPrinciple +
+          (Number(newPayment.principalAdvance) || 0) -
           (Number(newPayment.principalPaid) || 0),
-        openingInterest: lastRecord.outstandingInterest,
+        openingInterest: referenceRecord.outstandingInterest,
         interestCharge: Number(newPayment.interestCharge) || 0,
         intrestPaid: Number(newPayment.interestPaid) || 0,
-        outstandingInterest: lastRecord.outstandingInterest + 
-          (Number(newPayment.interestCharge) || 0) - 
-          (Number(newPayment.interestPaid) || 0)
+        outstandingInterest:
+          referenceRecord.outstandingInterest +
+          (Number(newPayment.interestCharge) || 0) -
+          (Number(newPayment.interestPaid) || 0),
       };
-
+      console.log("payment: ", newPayment, "Record: ", newRecord);
       // Sort records by date before adding new record
-      const updatedRecords = [...debtor.monthlyRecords, newRecord]
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      const updatedRecords = [...debtor.monthlyRecords, newRecord].sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+      );
 
       const updatedDebtor = {
         ...debtor,
         monthlyRecords: updatedRecords,
         currentOpeningPrincipal: newRecord.outstandingPrinciple,
         currentOpeningInterest: newRecord.outstandingInterest,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
 
       await onUpdateDebtor(updatedDebtor);
-      
+
       resetForm();
       setSnackbar({
         open: true,
-        message: 'Transaction added successfully',
-        severity: 'success'
+        message: "Transaction added successfully",
+        severity: "success",
       });
-      
+
       // Auto-switch to Monthly Records tab to show the new transaction
       setTimeout(() => setActiveTab(1), 1000);
     } catch (error) {
+      // Rollback the transaction by removing the new record
+      const updatedRecords = debtor.monthlyRecords.filter(
+        (record) => record.id !== newRecord.id
+      );
+      const lastRecord = updatedRecords[updatedRecords.length - 1];
+      const updatedDebtor = {
+        ...debtor,
+        monthlyRecords: updatedRecords,
+        currentOpeningPrincipal: lastRecord.outstandingPrinciple,
+        currentOpeningInterest: lastRecord.outstandingInterest,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      await onUpdateDebtor(updatedDebtor);
+
       setSnackbar({
         open: true,
-        message: 'Error adding transaction: ' + (error.message || 'Unknown error'),
-        severity: 'error'
+        message:
+          "Error adding transaction: " + (error.message || "Unknown error"),
+        severity: "error",
       });
     } finally {
       setLoading(false);
@@ -144,48 +212,80 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'UGX',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "UGX",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
   const calculateTotals = () => {
-    if (!debtor?.monthlyRecords) return {
-      totalPrincipalPaid: 0,
-      totalInterestPaid: 0,
-      totalPrincipalAdvance: 0,
-      totalInterestCharge: 0
-    };
+    if (!debtor?.monthlyRecords)
+      return {
+        totalPrincipalPaid: 0,
+        totalInterestPaid: 0,
+        totalPrincipalAdvance: 0,
+        totalInterestCharge: 0,
+      };
 
-    return debtor.monthlyRecords.reduce((acc, record) => ({
-      totalPrincipalPaid: acc.totalPrincipalPaid + (Number(record.principlePaid) || 0),
-      totalInterestPaid: acc.totalInterestPaid + (Number(record.intrestPaid) || 0),
-      totalPrincipalAdvance: acc.totalPrincipalAdvance + (Number(record.principleAdvance) || 0),
-      totalInterestCharge: acc.totalInterestCharge + (Number(record.interestCharge) || 0)
-    }), {
-      totalPrincipalPaid: 0,
-      totalInterestPaid: 0,
-      totalPrincipalAdvance: 0,
-      totalInterestCharge: 0
-    });
+    return debtor.monthlyRecords.reduce(
+      (acc, record) => ({
+        totalPrincipalPaid:
+          acc.totalPrincipalPaid + (Number(record.principlePaid) || 0),
+        totalInterestPaid:
+          acc.totalInterestPaid + (Number(record.intrestPaid) || 0),
+        totalPrincipalAdvance:
+          acc.totalPrincipalAdvance + (Number(record.principleAdvance) || 0),
+        totalInterestCharge:
+          acc.totalInterestCharge + (Number(record.interestCharge) || 0),
+      }),
+      {
+        totalPrincipalPaid: 0,
+        totalInterestPaid: 0,
+        totalPrincipalAdvance: 0,
+        totalInterestCharge: 0,
+      }
+    );
+  };
+
+  const formatNumberWithCommas = (number) => {
+    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  const handlePrincipalAdvanceChange = (e) => {
+    const value = e.target.value.replace(/,/g, "");
+    setNewPayment({ ...newPayment, principalAdvance: value });
+  };
+
+  const handlePrincipalPaidChange = (e) => {
+    const value = e.target.value.replace(/,/g, "");
+    setNewPayment({ ...newPayment, principalPaid: value });
+  };
+
+  const handleInterestChargeChange = (e) => {
+    const value = e.target.value.replace(/,/g, "");
+    setNewPayment({ ...newPayment, interestCharge: value });
+  };
+
+  const handleInterestPaidChange = (e) => {
+    const value = e.target.value.replace(/,/g, "");
+    setNewPayment({ ...newPayment, interestPaid: value });
   };
 
   if (!debtor) return null;
 
   const totals = calculateTotals();
-  const chartData = debtor.monthlyRecords.map(record => ({
-    month: format(new Date(record.date), 'MMM yyyy'),
+  const chartData = debtor.monthlyRecords.map((record) => ({
+    month: format(new Date(record.date), "MMM yyyy"),
     principal: record.outstandingPrinciple,
-    interest: record.outstandingInterest
+    interest: record.outstandingInterest,
   }));
 
   return (
     <>
-      <Dialog 
-        open={open} 
+      <Dialog
+        open={open}
         onClose={onClose}
         fullScreen={isMobile}
         maxWidth="lg"
@@ -193,29 +293,29 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
         TransitionComponent={Fade}
         transitionDuration={300}
       >
-        <DialogTitle 
+        <DialogTitle
           sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             p: 2,
             bgcolor: theme.palette.primary.main,
-            color: 'white'
+            color: "white",
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography variant="h6">{debtor.customerName}</Typography>
-            {loading && <CircularProgress size={20} sx={{ color: 'white' }} />}
+            {loading && <CircularProgress size={20} sx={{ color: "white" }} />}
           </Box>
-          <IconButton onClick={onClose} sx={{ color: 'white' }}>
+          <IconButton onClick={onClose} sx={{ color: "white" }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        
+
         <DialogContent sx={{ p: 0 }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs 
-              value={activeTab} 
+          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs
+              value={activeTab}
               onChange={(_, newValue) => setActiveTab(newValue)}
               variant={isMobile ? "fullWidth" : "standard"}
               sx={{ px: 2 }}
@@ -231,113 +331,133 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
               <Box>
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                   <Grid item xs={12} md={6}>
-                    <Paper 
+                    <Paper
                       elevation={3}
-                      sx={{ 
+                      sx={{
                         p: 2,
                         background: `linear-gradient(135deg, ${theme.palette.primary.light}, ${theme.palette.primary.main})`,
-                        color: 'white',
-                        transition: 'transform 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)'
-                        }
+                        color: "white",
+                        transition: "transform 0.2s",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                        },
                       }}
                     >
-                      <Typography variant="h6" sx={{ mb: 2 }}>Principal Summary</Typography>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
+                        Principal Summary
+                      </Typography>
                       <Grid container spacing={2}>
                         <Grid item xs={6}>
-                          <Typography variant="body2">Total Advanced</Typography>
-                          <Typography variant="h6">{formatCurrency(totals.totalPrincipalAdvance)}</Typography>
+                          <Typography variant="body2">
+                            Total Advanced
+                          </Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(totals.totalPrincipalAdvance)}
+                          </Typography>
                         </Grid>
                         <Grid item xs={6}>
                           <Typography variant="body2">Total Paid</Typography>
-                          <Typography variant="h6">{formatCurrency(totals.totalPrincipalPaid)}</Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(totals.totalPrincipalPaid)}
+                          </Typography>
                         </Grid>
                         <Grid item xs={12}>
                           <Typography variant="body2">Outstanding</Typography>
-                          <Typography variant="h6">{formatCurrency(debtor.currentOpeningPrincipal)}</Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(debtor.currentOpeningPrincipal)}
+                          </Typography>
                         </Grid>
                       </Grid>
                     </Paper>
                   </Grid>
                   <Grid item xs={12} md={6}>
-                    <Paper 
+                    <Paper
                       elevation={3}
-                      sx={{ 
+                      sx={{
                         p: 2,
                         background: `linear-gradient(135deg, ${theme.palette.secondary.light}, ${theme.palette.secondary.main})`,
-                        color: 'white',
-                        transition: 'transform 0.2s',
-                        '&:hover': {
-                          transform: 'translateY(-4px)'
-                        }
+                        color: "white",
+                        transition: "transform 0.2s",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                        },
                       }}
                     >
-                      <Typography variant="h6" sx={{ mb: 2 }}>Interest Summary</Typography>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
+                        Interest Summary
+                      </Typography>
                       <Grid container spacing={2}>
                         <Grid item xs={6}>
                           <Typography variant="body2">Total Charged</Typography>
-                          <Typography variant="h6">{formatCurrency(totals.totalInterestCharge)}</Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(totals.totalInterestCharge)}
+                          </Typography>
                         </Grid>
                         <Grid item xs={6}>
                           <Typography variant="body2">Total Paid</Typography>
-                          <Typography variant="h6">{formatCurrency(totals.totalInterestPaid)}</Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(totals.totalInterestPaid)}
+                          </Typography>
                         </Grid>
                         <Grid item xs={12}>
                           <Typography variant="body2">Outstanding</Typography>
-                          <Typography variant="h6">{formatCurrency(debtor.currentOpeningInterest)}</Typography>
+                          <Typography variant="h6">
+                            {formatCurrency(debtor.currentOpeningInterest)}
+                          </Typography>
                         </Grid>
                       </Grid>
                     </Paper>
                   </Grid>
                 </Grid>
-                
-                <Paper 
-                  elevation={3} 
-                  sx={{ 
-                    p: 2, 
+
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 2,
                     height: isMobile ? 300 : 400,
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)'
-                    }
+                    transition: "transform 0.2s",
+                    "&:hover": {
+                      transform: "translateY(-4px)",
+                    },
                   }}
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
+                      <XAxis
                         dataKey="month"
                         angle={-45}
                         textAnchor="end"
                         height={70}
                         tick={{ fontSize: isMobile ? 10 : 12 }}
                       />
-                      <YAxis 
-                        tickFormatter={(value) => new Intl.NumberFormat('en', {
-                          notation: 'compact',
-                          compactDisplay: 'short'
-                        }).format(value)}
+                      <YAxis
+                        tickFormatter={(value) =>
+                          new Intl.NumberFormat("en", {
+                            notation: "compact",
+                            compactDisplay: "short",
+                          }).format(value)
+                        }
                         tick={{ fontSize: isMobile ? 10 : 12 }}
                       />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value) => formatCurrency(value)}
                         labelFormatter={(label) => `Month: ${label}`}
                         contentStyle={{ fontSize: isMobile ? 12 : 14 }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="principal" 
-                        stroke={theme.palette.primary.main} 
+                      <Line
+                        type="monotone"
+                        dataKey="principal"
+                        stroke={theme.palette.primary.main}
                         name="Principal"
                         strokeWidth={2}
                         dot={{ r: 4 }}
                         activeDot={{ r: 6 }}
                       />
-                      <Line 
-                        type="monotone" 
-                        dataKey="interest" 
-                        stroke={theme.palette.secondary.main} 
+                      <Line
+                        type="monotone"
+                        dataKey="interest"
+                        stroke={theme.palette.secondary.main}
                         name="Interest"
                         strokeWidth={2}
                         dot={{ r: 4 }}
@@ -350,14 +470,14 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
             )}
 
             {activeTab === 1 && (
-              <TableContainer 
-                component={Paper} 
-                sx={{ 
-                  maxHeight: isMobile ? 'calc(100vh - 200px)' : 600,
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
+              <TableContainer
+                component={Paper}
+                sx={{
+                  maxHeight: isMobile ? "calc(100vh - 200px)" : 600,
+                  transition: "transform 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-4px)",
+                  },
                 }}
               >
                 <Table stickyHeader>
@@ -374,21 +494,35 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                   </TableHead>
                   <TableBody>
                     {[...debtor.monthlyRecords].reverse().map((record) => (
-                      <TableRow 
+                      <TableRow
                         key={record.id}
                         sx={{
-                          '&:hover': {
-                            bgcolor: theme.palette.action.hover
-                          }
+                          "&:hover": {
+                            bgcolor: theme.palette.action.hover,
+                          },
                         }}
                       >
-                        <TableCell>{format(new Date(record.date), 'dd MMM yyyy')}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.principleAdvance)}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.principlePaid)}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.interestCharge)}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.intrestPaid)}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.outstandingPrinciple)}</TableCell>
-                        <TableCell align="right">{formatCurrency(record.outstandingInterest)}</TableCell>
+                        <TableCell>
+                          {format(new Date(record.date), "dd MMM yyyy")}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.principleAdvance)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.principlePaid)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.interestCharge)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.intrestPaid)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.outstandingPrinciple)}
+                        </TableCell>
+                        <TableCell align="right">
+                          {formatCurrency(record.outstandingInterest)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -398,15 +532,15 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
 
             {activeTab === 2 && (
               <Box>
-                <Paper 
-                  elevation={3} 
-                  sx={{ 
-                    p: 3, 
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 3,
                     mb: 3,
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)'
-                    }
+                    transition: "transform 0.2s",
+                    "&:hover": {
+                      transform: "translateY(-4px)",
+                    },
                   }}
                 >
                   <Grid container spacing={3}>
@@ -415,38 +549,48 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                         <DatePicker
                           label="Transaction Date"
                           value={selectedDate}
-                          onChange={(newDate) => setSelectedDate(newDate || new Date())}
+                          onChange={(newDate) =>
+                            setSelectedDate(newDate || new Date())
+                          }
                           renderInput={(params) => (
-                            <TextField 
-                              {...params} 
+                            <TextField
+                              {...params}
                               fullWidth
                               error={
-                                (selectedDate && isAfter(selectedDate, new Date())) || 
-                                (debtor?.monthlyRecords?.length > 0 && 
-                                 selectedDate && 
-                                 isBefore(selectedDate, new Date(debtor.monthlyRecords[0].date)))
+                                (selectedDate &&
+                                  isAfter(selectedDate, new Date())) ||
+                                (debtor?.monthlyRecords?.length > 0 &&
+                                  selectedDate &&
+                                  isBefore(
+                                    selectedDate,
+                                    new Date(debtor.monthlyRecords[0].date)
+                                  ))
                               }
                               helperText={
-                                selectedDate && isAfter(selectedDate, new Date()) 
+                                selectedDate &&
+                                isAfter(selectedDate, new Date())
                                   ? "Date cannot be in the future"
-                                  : debtor?.monthlyRecords?.length > 0 && 
-                                    selectedDate && 
-                                    isBefore(selectedDate, new Date(debtor.monthlyRecords[0].date))
-                                    ? "Date cannot be before the first record"
-                                    : ""
+                                  : debtor?.monthlyRecords?.length > 0 &&
+                                    selectedDate &&
+                                    isBefore(
+                                      selectedDate,
+                                      new Date(debtor.monthlyRecords[0].date)
+                                    )
+                                  ? "Date cannot be before the first record"
+                                  : ""
                               }
                             />
                           )}
-                          maxDate={new Date()}
-                          minDate={debtor?.monthlyRecords?.length > 0 
-                            ? new Date(debtor.monthlyRecords[0].date) 
-                            : undefined}
-                          views={['year', 'month', 'day']}
+                          // maxDate={new Date()}
+                          // minDate={debtor?.monthlyRecords?.length > 0
+                          // ? new Date(debtor.monthlyRecords[0].date)
+                          // : undefined}
+                          views={["year", "month"]}
                           disableFuture
                           sx={{
-                            '& .MuiInputBase-root': {
-                              bgcolor: 'background.paper'
-                            }
+                            "& .MuiInputBase-root": {
+                              bgcolor: "background.paper",
+                            },
                           }}
                         />
                       </LocalizationProvider>
@@ -454,12 +598,16 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Principal Advance"
-                        type="number"
-                        value={newPayment.principalAdvance}
-                        onChange={(e) => setNewPayment({...newPayment, principalAdvance: e.target.value})}
+                        label="Principal Advanced"
+                        type="text"
+                        value={formatNumberWithCommas(
+                          newPayment.principalAdvance
+                        )}
+                        onChange={handlePrincipalAdvanceChange}
                         InputProps={{
-                          startAdornment: <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          startAdornment: (
+                            <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          ),
                         }}
                         disabled={loading}
                       />
@@ -467,12 +615,14 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Principal Payment"
-                        type="number"
-                        value={newPayment.principalPaid}
-                        onChange={(e) => setNewPayment({...newPayment, principalPaid: e.target.value})}
+                        label="Part of Principle Paid"
+                        type="text"
+                        value={formatNumberWithCommas(newPayment.principalPaid)}
+                        onChange={handlePrincipalPaidChange}
                         InputProps={{
-                          startAdornment: <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          startAdornment: (
+                            <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          ),
                         }}
                         disabled={loading}
                       />
@@ -480,12 +630,16 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Interest Charge"
-                        type="number"
-                        value={newPayment.interestCharge}
-                        onChange={(e) => setNewPayment({...newPayment, interestCharge: e.target.value})}
+                        label="Interest Charged"
+                        type="text"
+                        value={formatNumberWithCommas(
+                          newPayment.interestCharge
+                        )}
+                        onChange={handleInterestChargeChange}
                         InputProps={{
-                          startAdornment: <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          startAdornment: (
+                            <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          ),
                         }}
                         disabled={loading}
                       />
@@ -493,12 +647,14 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                     <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
-                        label="Interest Payment"
-                        type="number"
-                        value={newPayment.interestPaid}
-                        onChange={(e) => setNewPayment({...newPayment, interestPaid: e.target.value})}
+                        label="Interest Paid"
+                        type="text"
+                        value={formatNumberWithCommas(newPayment.interestPaid)}
+                        onChange={handleInterestPaidChange}
                         InputProps={{
-                          startAdornment: <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          startAdornment: (
+                            <Typography sx={{ mr: 1 }}>UGX</Typography>
+                          ),
                         }}
                         disabled={loading}
                       />
@@ -510,16 +666,22 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                         fullWidth
                         onClick={handleNewPayment}
                         disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                        startIcon={
+                          loading ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <SaveIcon />
+                          )
+                        }
                         sx={{
                           py: 1.5,
-                          transition: 'transform 0.2s',
-                          '&:not(:disabled):hover': {
-                            transform: 'translateY(-2px)'
-                          }
+                          transition: "transform 0.2s",
+                          "&:not(:disabled):hover": {
+                            transform: "translateY(-2px)",
+                          },
                         }}
                       >
-                        {loading ? 'Saving Transaction...' : 'Save Transaction'}
+                        {loading ? "Saving Transaction..." : "Save Transaction"}
                       </Button>
                     </Grid>
                   </Grid>
@@ -534,14 +696,14 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           variant="filled"
           elevation={6}
-          sx={{ width: '100%' }}
+          sx={{ width: "100%" }}
         >
           {snackbar.message}
         </Alert>
