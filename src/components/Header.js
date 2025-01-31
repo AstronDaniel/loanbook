@@ -18,7 +18,7 @@ const Header = ({ toggleSidebar }) => {
     <header className="bg-white shadow-sm dark:bg-[#0b1019]">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center space-x-4">
-          <img src="/logo.png" alt="Logo" className="h-8 w-8" />
+          {/* <img src="/logo.png" alt="Logo" className="h-8 w-8" /> */}
           <button className="md:hidden p-2" onClick={toggleSidebar}>
             <Menu className="h-6 w-6" />
           </button>
