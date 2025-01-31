@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Typography, Paper, Grid, Button, TextField, LinearProgress, Chip, Snackbar, CircularProgress, IconButton, useMediaQuery, styled, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, useTheme, Card, CardContent
+  Box, Typography, Paper, Grid, Button, TextField, LinearProgress, Chip, Snackbar, CircularProgress, IconButton, useMediaQuery, styled, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, Drawer, useTheme, Card, CardContent, Select, MenuItem
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getFirestore, collection, getDocs, doc, updateDoc } from 'firebase/firestore';
@@ -67,6 +67,10 @@ const DebtorsDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date('2024-01-01'));
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sortField, setSortField] = useState('customerName');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [transactionDate, setTransactionDate] = useState(new Date()); // New state for transaction date
   // Summary statistics calculation
   const summaryStats = {
     totalPrincipal: debtors.reduce((sum, d) => sum + d.currentOpeningPrincipal, 0),
@@ -104,8 +108,8 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
       
       const newRecord = {
         id: selectedDebtor.monthlyRecords.length,
-        date: new Date().toISOString().split('T')[0],
-        month: `${new Date().getFullYear()}-${new Date().getMonth() + 1}`,
+        date: transactionDate.toISOString().split('T')[0], // Use selected transaction date
+        month: `${transactionDate.getFullYear()}-${transactionDate.getMonth() + 1}`,
         openingPrinciple: lastRecord.outstandingPrinciple,
         principleAdvance: 0,
         principlePaid: Number(newPayment.principal),
@@ -140,9 +144,31 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleSnackbarClose = () => setSnackbarOpen(false);
 
-  const filteredDebtors = debtors.filter(debtor => 
-    debtor.customerName && debtor.customerName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleSortChange = (field) => {
+    const order = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortField(field);
+    setSortOrder(order);
+  };
+
+  const handleFilterChange = (status) => {
+    setFilterStatus(status);
+  };
+
+  const filteredDebtors = debtors
+    .filter(debtor => 
+      debtor.customerName && debtor.customerName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .filter(debtor => 
+      filterStatus === 'all' || debtor.status === filterStatus
+    );
+
+  const sortedDebtors = [...filteredDebtors].sort((a, b) => {
+    if (sortOrder === 'asc') {
+      return a[sortField] > b[sortField] ? 1 : -1;
+    } else {
+      return a[sortField] < b[sortField] ? 1 : -1;
+    }
+  });
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -392,12 +418,25 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
                 />
               </StyledDatePicker>
             </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Select
+                fullWidth
+                value={filterStatus}
+                onChange={(e) => handleFilterChange(e.target.value)}
+                variant="outlined"
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="overdue">Overdue</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </Grid>
           </Grid>
 
           {/* Debtors Grid */}
           <Grid container spacing={isMobile ? 2 : 3}>
-            {filteredDebtors.length > 0 ? (
-              filteredDebtors.map((debtor) => (
+            {sortedDebtors.length > 0 ? (
+              sortedDebtors.map((debtor) => (
                 <Grid item xs={12} sm={6} lg={4} key={debtor.id}>
                   <Card 
                     sx={{ 

@@ -31,15 +31,18 @@ const LoanManagement = () => {
     loanType: 'Personal',
     amount: '',
     interestAmount: '',
-    durationMonths: '',
+    duration: '', // Unified duration field
     status: 'Active',
   });
+  const [durationType, setDurationType] = useState('days'); // New state for duration type
   const [loans, setLoans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [sortField, setSortField] = useState('startDate');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -62,13 +65,34 @@ const LoanManagement = () => {
     return `${date.getFullYear()}-${date.getMonth() + 1}`;
   };
 
+  const formatNumberWithCommas = (number) => {
+    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
+  const handleAmountChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setFormData({ ...formData, amount: value });
+  };
+
+  const handleInterestAmountChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setFormData({ ...formData, interestAmount: value });
+  };
+
   // Loan management functions
   const createLoan = async (loanData) => {
+    const durationInMilliseconds = durationType === 'days' 
+      ? loanData.duration * 24 * 60 * 60 * 1000 
+      : loanData.duration * 30 * 24 * 60 * 60 * 1000;
+
+    const startDate = new Date(); // Revert start date to the current date
+    const dueDate = new Date(startDate.getTime() + durationInMilliseconds).toISOString().split('T')[0];
+
     const newLoan = {
       ...loanData,
       loanId: generateId(),
-      startDate: new Date().toISOString().split('T')[0],
-      dueDate: new Date(Date.now() + (loanData.durationMonths * 30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
+      startDate: startDate.toISOString().split('T')[0],
+      dueDate: dueDate,
       status: 'active'
     };
 
@@ -113,6 +137,20 @@ const LoanManagement = () => {
       .catch((error) => console.error('Error creating debtor:', error));
   };
 
+  const updateDebtor = async (loanId, updatedData) => {
+    const querySnapshot = await getDocs(collection(db, 'debtors'));
+    const debtorDoc = querySnapshot.docs.find(doc => doc.data().loanId === loanId);
+    if (debtorDoc) {
+      const debtorRef = doc(db, 'debtors', debtorDoc.id);
+      await updateDoc(debtorRef, {
+        customerName: updatedData.customerName,
+        currentOpeningPrincipal: Number(updatedData.amount),
+        currentOpeningInterest: Number(updatedData.interestAmount),
+        status: updatedData.status
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -121,6 +159,7 @@ const LoanManagement = () => {
         const loanDoc = doc(db, 'loans', currentLoanId);
         await updateDoc(loanDoc, formData);
         setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...formData } : loan));
+        await updateDebtor(currentLoanId, formData); // Update debtor document
         setSnackbarMessage('Loan updated successfully');
       } else {
         await createLoan(formData); // Create new loan
@@ -152,9 +191,10 @@ const LoanManagement = () => {
       loanType: 'Personal',
       amount: '',
       interestAmount: '',
-      durationMonths: '',
+      duration: '', // Unified duration field
       status: 'Active',
     });
+    setDurationType('days'); // Reset duration type
     setIsEditing(false);
     setCurrentLoanId(null);
   };
@@ -166,9 +206,10 @@ const LoanManagement = () => {
       loanType: loan.loanType,
       amount: loan.amount,
       interestAmount: loan.interestAmount,
-      durationMonths: loan.durationMonths,
+      duration: loan.duration, // Unified duration field
       status: loan.status,
     });
+    setDurationType(loan.durationType || 'days'); // Set duration type
     setIsEditing(true);
     setCurrentLoanId(loan.id);
   };
@@ -176,6 +217,20 @@ const LoanManagement = () => {
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
+
+  const handleSortChange = (field) => {
+    const order = sortField === field && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortField(field);
+    setSortOrder(order);
+  };
+
+  const sortedLoans = [...loans].sort((a, b) => {
+    if (sortOrder === 'asc') {
+      return a[sortField] > b[sortField] ? 1 : -1;
+    } else {
+      return a[sortField] < b[sortField] ? 1 : -1;
+    }
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -230,9 +285,9 @@ const LoanManagement = () => {
                   <TextField
                     fullWidth
                     label="Loan Amount (UGX)"
-                    type="number"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    type="text"
+                    value={formatNumberWithCommas(formData.amount)}
+                    onChange={handleAmountChange}
                     required
                   />
                 </Grid>
@@ -240,19 +295,29 @@ const LoanManagement = () => {
                   <TextField
                     fullWidth
                     label="Interest Amount (UGX)"
-                    type="number"
-                    value={formData.interestAmount}
-                    onChange={(e) => setFormData({ ...formData, interestAmount: e.target.value })}
+                    type="text"
+                    value={formatNumberWithCommas(formData.interestAmount)}
+                    onChange={handleInterestAmountChange}
                     required
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
+                  <Select
+                    fullWidth
+                    value={durationType}
+                    onChange={(e) => setDurationType(e.target.value)}
+                  >
+                    <MenuItem value="days">Days</MenuItem>
+                    <MenuItem value="months">Months</MenuItem>
+                  </Select>
+                </Grid>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Duration (Months)"
+                    label={`Duration (${durationType.charAt(0).toUpperCase() + durationType.slice(1)})`}
                     type="number"
-                    value={formData.durationMonths}
-                    onChange={(e) => setFormData({ ...formData, durationMonths: e.target.value })}
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     required
                   />
                 </Grid>
@@ -275,18 +340,18 @@ const LoanManagement = () => {
                   <TableRow sx={{
                     backgroundColor: 'rgba(0, 0, 0, 0.04)',
                   }}>
-                    <TableCell>Customer</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Amount</TableCell>
-                    <TableCell>Interest</TableCell>
-                    <TableCell>Start Date</TableCell>
-                    <TableCell>Due Date</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell onClick={() => handleSortChange('customerName')}>Customer</TableCell>
+                    <TableCell onClick={() => handleSortChange('loanType')}>Type</TableCell>
+                    <TableCell onClick={() => handleSortChange('amount')}>Amount</TableCell>
+                    <TableCell onClick={() => handleSortChange('interestAmount')}>Interest</TableCell>
+                    <TableCell onClick={() => handleSortChange('startDate')}>Start Date</TableCell>
+                    <TableCell onClick={() => handleSortChange('dueDate')}>Due Date</TableCell>
+                    <TableCell onClick={() => handleSortChange('status')}>Status</TableCell>
                     <TableCell>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {loans.map((loan) => (
+                  {sortedLoans.map((loan) => (
                     <TableRow key={loan.id}>
                       <TableCell>{loan.customerName}</TableCell>
                       <TableCell>{loan.loanType}</TableCell>
