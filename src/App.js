@@ -24,6 +24,9 @@ const App = () => {
   const theme = createTheme({
     palette: {
       mode: darkMode ? 'dark' : 'light',
+      background: {
+        default: darkMode ? '#0b1019' : '#ffffff',
+      },
     },
   });
 
@@ -54,7 +57,7 @@ const App = () => {
             <Route path="/rEarnings" element={<RetainedEarnings />} />
             <Route path="/bSheet" element={<BalanceSheet />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings" element={<Settings darkMode={darkMode} toggleDarkMode={toggleDarkMode} />} />
           </Routes>
         </div>
       </Router>
