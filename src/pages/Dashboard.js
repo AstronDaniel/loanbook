@@ -200,12 +200,12 @@ const Dashboard = () => {
           <MonthlyDetailsCard />
 
           {/* Recent Transactions */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">Recent Transactions</h3>
                 <button className="text-blue-600 text-sm hover:underline">View All</button>
-              </div>
+              </div> */}
               
               {/* Mobile Transaction Cards */}
               {/* <div className="md:hidden space-y-4">
@@ -272,8 +272,8 @@ const Dashboard = () => {
                   </tbody>
                 </table>
               </div> */}
-            </div>
-          </div>
+            {/* </div>
+          </div> */}
         </main>
       </div>
     </div>
