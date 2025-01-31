@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { app } from '../firebase';
-
+ 
 const MonthlyDetailsCard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [monthlyDetails, setMonthlyDetails] = useState([]);
