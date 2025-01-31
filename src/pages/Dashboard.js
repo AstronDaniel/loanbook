@@ -113,7 +113,10 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Total Loans</p>
+                  <p className="text-xs md:text-sm text-gray-600">
+                    {/* Total Loans */}
+                    Principal Advanced
+                    </p>
                   <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.totalLoans)}</p>
                 </div>
                 <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
@@ -137,7 +140,7 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">Monthly Interest</p>
+                  <p className="text-xs md:text-sm text-gray-600">Interest Charged Year To Date</p>
                   <p className="text-lg md:text-2xl font-semibold mt-1">{formatUGX(stats.monthlyInterest)}</p>
                 </div>
                 <div className="p-2 md:p-3 bg-blue-50 rounded-lg">
