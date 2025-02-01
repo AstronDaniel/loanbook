@@ -17,15 +17,10 @@ import {
   Grid,
   Snackbar,
   CircularProgress,
-  InputAdornment,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
+  InputAdornment
 } from '@mui/material';
-import { Search as SearchIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { Search as SearchIcon } from '@mui/icons-material';
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 
 const db = getFirestore(app);
@@ -51,8 +46,6 @@ const LoanManagement = () => {
   const [sortField, setSortField] = useState('customerName');
   const [sortOrder, setSortOrder] = useState('asc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [loanToDelete, setLoanToDelete] = useState(null);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -222,27 +215,6 @@ const LoanManagement = () => {
     setDurationType(loan.durationType || 'days'); // Set duration type
     setIsEditing(true);
     setCurrentLoanId(loan.id);
-  };
-
-  const handleDelete = (loan) => {
-    setLoanToDelete(loan);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (loanToDelete) {
-      try {
-        await deleteDoc(doc(db, 'loans', loanToDelete.id));
-        setLoans(loans.filter(loan => loan.id !== loanToDelete.id));
-        setSnackbarMessage('Loan deleted successfully');
-      } catch (error) {
-        console.error('Error deleting loan:', error);
-        setSnackbarMessage('Error deleting loan');
-      } finally {
-        setDeleteDialogOpen(false);
-        setSnackbarOpen(true);
-      }
-    }
   };
 
   const handleSnackbarClose = () => {
@@ -430,9 +402,6 @@ const LoanManagement = () => {
                       <TableCell>{loan.status}</TableCell>
                       <TableCell>
                         <Button size="small" variant="outlined" onClick={() => handleEdit(loan)}>Edit</Button>
-                        <IconButton size="small" color="error" onClick={() => handleDelete(loan)}>
-                          <DeleteIcon />
-                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -445,21 +414,6 @@ const LoanManagement = () => {
           </Paper>
         </main>
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to delete this loan?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">Delete</Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Snackbar for feedback messages */}
       <Snackbar
