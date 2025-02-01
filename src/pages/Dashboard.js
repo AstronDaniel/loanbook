@@ -5,9 +5,8 @@ import Header from '../components/Header';   // Adjust the path as necessary
 import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
-import { TextField, Select, MenuItem, InputAdornment } from '@material-ui/core';
-import SearchIcon from '@material-ui/icons/Search';
-
+import { TextField, Select, MenuItem, InputAdornment } from '@mui/material';
+import { Search as SearchIcon } from '@mui/icons-material';
 const db = getFirestore(app);
 
 const Dashboard = () => {
