@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, BarChart, Bar } from 'recharts';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react';
@@ -7,6 +7,8 @@ import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 import OverdueDebtorsCard from '../components/OverdueDebtorsCard'; // Import the new component
 import MonthlyDetailsCard from '../components/MonthlyDetailsCard'; // Import the new component
+import { TextField, Select, MenuItem, InputAdornment } from '@material-ui/core';
+import SearchIcon from '@material-ui/icons/Search';
 
 const db = getFirestore(app);
 
@@ -20,6 +22,13 @@ const Dashboard = () => {
     monthlyInterest: 0,
     duePayments: 0,
   });
+  const [loanDisbursementsData, setLoanDisbursementsData] = useState([]);
+  const [interestEarnedData, setInterestEarnedData] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterLoanType, setFilterLoanType] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
 
   // Helper function for UGX formatting
   const formatUGX = (amount) => {
@@ -199,84 +208,109 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Monthly Details Card */}
-          <MonthlyDetailsCard />
+          {/* Additional Charts and Graphs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
+              <h3 className="text-lg font-semibold mb-4">Loan Disbursements Over Time</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={loanDisbursementsData}>
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="amount" stroke="#8884d8" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
+              <h3 className="text-lg font-semibold mb-4">Interest Earned Over Time</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={interestEarnedData}>
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="interest" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-          {/* Recent Transactions */}
-          {/* <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          {/* Recent Activities */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
             <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Recent Transactions</h3>
+                <h3 className="text-lg font-semibold">Recent Activities</h3>
                 <button className="text-blue-600 text-sm hover:underline">View All</button>
-              </div> */}
-              
-              {/* Mobile Transaction Cards */}
-              {/* <div className="md:hidden space-y-4">
-                {recentTransactions.map((transaction) => (
-                  <div key={transaction.id} className="bg-gray-50 p-4 rounded-lg">
+              </div>
+              <div className="space-y-4">
+                {recentActivities.map((activity) => (
+                  <div key={activity.id} className="bg-gray-50 p-4 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h4 className="font-medium">{transaction.name}</h4>
-                        <p className="text-sm text-gray-600">{transaction.type}</p>
-                      </div>
-                      <button className="p-1">
-                        <MoreVertical className="h-5 w-5 text-gray-400" />
-                      </button>
-                    </div>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-lg font-semibold">{formatUGX(transaction.amount)}</span>
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm text-gray-600">{transaction.date}</span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          transaction.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {transaction.status}
-                        </span>
+                        <h4 className="font-medium">{activity.description}</h4>
+                        <p className="text-sm text-gray-600">{activity.date}</p>
                       </div>
                     </div>
                   </div>
                 ))}
-              </div> */}
+              </div>
+            </div>
+          </div>
 
-              {/* Desktop Transaction Table */}
-              {/* <div className="hidden md:block overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-sm text-gray-500 border-b">
-                      <th className="pb-4 font-medium">Name</th>
-                      <th className="pb-4 font-medium">Type</th>
-                      <th className="pb-4 font-medium">Amount</th>
-                      <th className="pb-4 font-medium">Date</th>
-                      <th className="pb-4 font-medium">Status</th>
-                      <th className="pb-4 font-medium"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentTransactions.map((transaction) => (
-                      <tr key={transaction.id} className="border-b">
-                        <td className="py-4 font-medium">{transaction.name}</td>
-                        <td className="py-4 text-gray-600">{transaction.type}</td>
-                        <td className="py-4">{formatUGX(transaction.amount)}</td>
-                        <td className="py-4 text-gray-600">{transaction.date}</td>
-                        <td className="py-4">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            transaction.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {transaction.status}
-                          </span>
-                        </td>
-                        <td className="py-4">
-                          <button className="p-1 hover:bg-gray-100 rounded-full">
-                            <MoreVertical className="h-5 w-5 text-gray-400" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div> */}
-            {/* </div>
-          </div> */}
+          {/* Filters and Search */}
+          <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm mb-6">
+            <h3 className="text-lg font-semibold mb-4">Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <TextField
+                fullWidth
+                label="Search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                variant="outlined"
+              />
+              <Select
+                fullWidth
+                value={filterLoanType}
+                onChange={(e) => setFilterLoanType(e.target.value)}
+                displayEmpty
+              >
+                <MenuItem value="">All Loan Types</MenuItem>
+                <MenuItem value="Personal">Personal Loan</MenuItem>
+                <MenuItem value="Business">Business Loan</MenuItem>
+                <MenuItem value="Education">Education Loan</MenuItem>
+                <MenuItem value="Home">Home Loan</MenuItem>
+              </Select>
+              <TextField
+                fullWidth
+                label="From Date"
+                type="date"
+                value={filterFromDate}
+                onChange={(e) => setFilterFromDate(e.target.value)}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+              <TextField
+                fullWidth
+                label="To Date"
+                type="date"
+                value={filterToDate}
+                onChange={(e) => setFilterToDate(e.target.value)}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Monthly Details Card */}
+          <MonthlyDetailsCard />
         </main>
       </div>
     </div>
