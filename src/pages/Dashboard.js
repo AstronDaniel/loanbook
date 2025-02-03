@@ -24,7 +24,7 @@ const Dashboard = () => {
     activeBorrowers: 0,
     monthlyInterest: 0,
     duePayments: 0,
-  });
+  }); 
   const [darkMode, setDarkMode] = useState(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
     return savedDarkMode ? JSON.parse(savedDarkMode) : false;
