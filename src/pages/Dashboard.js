@@ -83,31 +83,32 @@ const Dashboard = () => {
     { name: 'Outstanding Loans', value: 3000000 },
   ];
 
+  const fetchRecentTransactions = async () => {
+    const querySnapshot = await getDocs(collection(db, 'transactions'));
+    const transactionsData = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        date: data.date.toDate().toLocaleDateString(), // Convert Firestore timestamp to date string
+      };
+    });
+    setRecentTransactions(transactionsData);
+  };
+
   const fetchStats = async () => {
-    try {
-      const loansSnapshot = await getDocs(collection(db, 'loans'));
-      const loansData = loansSnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      }));
+    const loansSnapshot = await getDocs(collection(db, 'loans'));
+    const loansData = loansSnapshot.docs.map(doc => doc.data());
 
-      // Calculate stats
-      const totalLoans = loansData.reduce((sum, loan) => sum + (parseInt(loan.amount) || 0), 0);
-      const activeBorrowers = loansData.length;
-      const monthlyInterest = loansData.reduce((sum, loan) => sum + (parseInt(loan.interestAmount) || 0), 0);
-      const duePayments = loansData.reduce((sum, loan) => sum + (parseInt(loan.amount) || 0), 0);
+    // to get duePayemnets
+    const dueP = await getDocs(collection(db, 'debtors'));
+    const duePData = dueP.docs.map(doc => doc.data());
+    const dues = duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrincipal), 0);
 
-      // Calculate overdue loans
-      const overdueLoansCount = loansData.filter(loan => {
-        const daysOverdue = getDaysOverdue(loan.dueDate);
-        return daysOverdue > 0;
-      }).length;
-
-      // Calculate bad debtors (over 90 days)
-      const badDebtorsCount = loansData.filter(loan => {
-        const daysOverdue = getDaysOverdue(loan.dueDate);
-        return daysOverdue > 90;
-      }).length;
+    const totalLoans = loansData.reduce((sum, loan) => sum + parseInt(loan.amount), 0);
+    const activeBorrowers = loansData.length;
+    const monthlyInterest = loansData.reduce((sum, loan) => sum + parseInt(loan.interestAmount), 0);
+    const duePayments = dues; // Assuming all loans are due
 
     setStats({
       totalLoans,
@@ -212,9 +213,9 @@ const Dashboard = () => {
       )}
 
       {/* Sidebar */}
-      <Sidebar
-        isSidebarOpen={isSidebarOpen}    
-             toggleSidebar={toggleSidebar} 
+      <Sidebar 
+        isSidebarOpen={isSidebarOpen} 
+        toggleSidebar={toggleSidebar} 
         activeSection={activeSection} 
         setActiveSection={setActiveSection}
         darkMode={darkMode}
@@ -374,17 +375,6 @@ const Dashboard = () => {
                     </span>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Bad Debtors */}
-            <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">Bad Debtors</h3>
-              <div className="h-60 md:h-80 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-red-600">{badDebtors}</p>
-                  <p className="text-sm text-gray-600 mt-2">Debtors exceeding 90 days</p>
-                </div>
               </div>
             </div>
           </div>

@@ -24,7 +24,7 @@ import { format } from 'date-fns';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
 import { localStorageService, initializeCapitalContributions } from '../services/localStorage'; // Adjust the path as necessary
-
+ 
 const CapitalContributions = () => {
   const [investors, setInvestors] = useState([]);
   const [contributions, setContributions] = useState({});
@@ -36,7 +36,7 @@ const CapitalContributions = () => {
   const [selectedInvestor, setSelectedInvestor] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
+  useEffect(() => { 
     const { investors, contributions } = initializeCapitalContributions();
     setInvestors(investors);
     setContributions(contributions);
