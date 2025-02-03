@@ -6,8 +6,6 @@ import {
   where, 
   getDocs, 
   doc, 
-  updateDoc, 
-  addDoc, 
   getDoc 
 } from 'firebase/firestore';
 import { app } from '../firebase';
@@ -17,16 +15,18 @@ import {
   FileText, 
   Send 
 } from 'lucide-react';
-import DebtorManagementModal from './DebtorManagementModal';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { differenceInDays, parseISO } from 'date-fns';
+import DebtorManagementModal from './DebtorManagementModal';
 
 const MySwal = withReactContent(Swal);
 
-const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
-  const [overdueDebtors, setOverdueDebtors] = useState([]);
+const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
+  const [badDebtors, setBadDebtors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedDebtor, setSelectedDebtor] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -67,40 +67,45 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
   const currentTheme = THEMES[darkMode ? 'dark' : 'light'];
 
   useEffect(() => {
-    const fetchOverdueDebtors = async () => {
+    const fetchBadDebtors = async () => {
       try {
-        console.log('Fetching overdue debtors...');
         const db = getFirestore(app);
-        const overdueQuery = query(
+        const badDebtQuery = query(
           collection(db, 'debtors'), 
           where('status', '==', 'overdue')
         );
         
-        const querySnapshot = await getDocs(overdueQuery);
+        const querySnapshot = await getDocs(badDebtQuery);
         const debtorsData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
 
-        const sortedDebtors = debtorsData.sort(
-          (a, b) => b.currentOpeningPrincipal - a.currentOpeningPrincipal
-        );
+        const badDebtors = await Promise.all(debtorsData.map(async debtor => {
+          const loanDoc = await getDoc(doc(db, 'loans', debtor.loanId));
+          if (loanDoc.exists()) {
+            const dueDate = parseISO(loanDoc.data().dueDate);
+            const daysOverdue = differenceInDays(new Date(), dueDate);
+            if (daysOverdue >= 90) {
+              return debtor;
+            }
+          }
+          return null;
+        }));
 
-        console.log('Fetched and sorted overdue debtors:', sortedDebtors);
-        setOverdueDebtors(sortedDebtors);
+        setBadDebtors(badDebtors.filter(debtor => debtor !== null));
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching overdue debtors:', err);
-        setError('Failed to load overdue debtors');
+        console.error('Error fetching bad debtors:', err);
+        setError('Failed to load bad debtors');
         setLoading(false);
       }
     };
 
-    fetchOverdueDebtors();
+    fetchBadDebtors();
   }, []);
 
   const handleDebtorClick = async (debtor) => {
-    console.log('Debtor clicked:', debtor);
     const db = getFirestore(app);
     const loanDoc = await getDoc(doc(db, 'loans', debtor.loanId));
     if (loanDoc.exists()) {
@@ -108,47 +113,6 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
     }
     setSelectedDebtor(debtor);
     setIsModalOpen(true);
-  };
-
-  const handleExtend = async ({ dueDate, notes }) => {
-    try {
-      console.log('Extending due date for debtor:', selectedDebtor);
-      const db = getFirestore(app);
-      const debtorRef = doc(db, 'debtors', selectedDebtor.id);
-      
-      // Update debtor's due date
-      await updateDoc(debtorRef, { 
-        dueDate: dueDate,
-        status: 'extended'
-      });
-
-      // Log communication history
-      await addDoc(collection(db, 'communicationLogs'), {
-        debtorId: selectedDebtor.id,
-        customerName: selectedDebtor.customerName,
-        actionType: 'due_date_extension',
-        notes: notes,
-        extendedDate: dueDate,
-        timestamp: new Date()
-      });
-
-      console.log('Due date extended and communication log created for debtor:', selectedDebtor);
-      await MySwal.fire({
-        title: 'Extension Processed',
-        html: `
-          <div class="text-left">
-            <p>Due date for <strong>${selectedDebtor.customerName}</strong> extended to ${dueDate}</p>
-            <p class="text-sm text-gray-600 mt-2">Communication log created successfully</p>
-          </div>
-        `,
-        icon: 'success'
-      });
-
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error('Error updating debtor:', err);
-      MySwal.fire('Error', 'Failed to process extension', 'error');
-    }
   };
 
   const renderContent = () => {
@@ -176,9 +140,12 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
       </div>
     );
 
-    const overdueFilteredDebtors = filteredDebtors.filter(debtor => debtor.status === 'overdue');
-    console.log('Filtered Debtors:', filteredDebtors);
-    console.log('Overdue Filtered Debtors:', overdueFilteredDebtors);
+    const filteredDebtors = filteredDebtorss.filter(debtor => 
+      debtor.customerName.toLowerCase().includes(searchQuery.toLowerCase() ) && debtor.status === 'overdue'
+    );
+    // const overdueFilteredDebtors = filteredDebtors.filter(debtor => debtor.status === 'overdue');
+    // console.log('Filtered Debtors:', filteredDebtors);
+    // console.log('Overdue Filtered Debtors:', overdueFilteredDebtors);
 
     return (
       <div className={`
@@ -200,20 +167,20 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
             items-center
           `}>
             <AlertTriangle className={`w-5 h-5 mr-2 ${currentTheme.text.accent}`} />
-            Overdue Debtors
+            Bad Debtors
           </h2>
           <div className="flex items-center space-x-2">
             <span className={`text-sm ${currentTheme.text.secondary}`}>
-              Total Overdue: {overdueFilteredDebtors.length}
+              Total Bad Debtors: {filteredDebtors.length}
             </span>
             <FileText 
               className={`w-5 h-5 text-blue-500 cursor-pointer hover:text-blue-600`}
               onClick={() => MySwal.fire({
-                title: 'Overdue Report',
+                title: 'Bad Debtors Report',
                 html: `
                   <div class="text-left">
-                    <p>Total Overdue Debtors: <strong>${overdueFilteredDebtors.length}</strong></p>
-                    <p>Total Outstanding Principal: <strong>UGX ${overdueFilteredDebtors.reduce((sum, debtor) => sum + debtor.currentOpeningPrincipal, 0).toLocaleString()}</strong></p>
+                    <p>Total Bad Debtors: <strong>${filteredDebtors.length}</strong></p>
+                    <p>Total Outstanding Principal: <strong>UGX ${filteredDebtors.reduce((sum, debtor) => sum + debtor.currentOpeningPrincipal, 0).toLocaleString()}</strong></p>
                   </div>
                 `,
                 icon: 'info'
@@ -230,9 +197,9 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
           ${currentTheme.scrollbar.track} 
           ${currentTheme.scrollbar.thumb}
         `}>
-          {overdueFilteredDebtors.length > 0 ? (
+          {filteredDebtors.length > 0 ? (
             <div className="space-y-4">
-              {overdueFilteredDebtors.map((debtor) => (
+              {filteredDebtors.map((debtor) => (
                 <div 
                   key={debtor.id} 
                   className={`
@@ -299,7 +266,7 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
               ${currentTheme.text.secondary} 
               py-4
             `}>
-              <p>No overdue debtors at the moment</p>
+              <p>No bad debtors at the moment</p>
             </div>
           )}
         </div>
@@ -313,15 +280,12 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
       {isModalOpen && selectedDebtor && (
         <DebtorManagementModal 
           debtor={selectedDebtor} 
-          onExtend={handleExtend} 
-          onClose={() => {
-            setIsModalOpen(false);
-            console.log("Close modal");
-          }} 
+          onExtend={() => setIsModalOpen(false)} 
+          onClose={() => setIsModalOpen(false)} 
         />
       )}
     </>
   );
 };
 
-export default OverdueDebtorsCard;
+export default BadDebtorsCard;
