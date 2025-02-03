@@ -42,12 +42,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, isAfter, isBefore, parseISO } from "date-fns";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { app } from "../firebase"; // Adjust the path as necessary
 
 const db = getFirestore(app);
 
-const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
+const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebtor }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isMedium = useMediaQuery(theme.breakpoints.down("md"));
@@ -311,6 +311,30 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
       setSnackbar({
         open: true,
         message: 'Error updating record: ' + (error.message || 'Unknown error'),
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDebtor = async () => {
+    if (!debtor) return;
+
+    try {
+      setLoading(true);
+      await deleteDoc(doc(db, 'debtors', debtor.id));
+      onDeleteDebtor(debtor.id);
+      setSnackbar({
+        open: true,
+        message: 'Debtor deleted successfully',
+        severity: 'success'
+      });
+      onClose();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Error deleting debtor: ' + (error.message || 'Unknown error'),
         severity: 'error'
       });
     } finally {
@@ -872,6 +896,25 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor }) => {
                         }}
                       >
                         Rollback Last Transaction
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        fullWidth
+                        onClick={handleDeleteDebtor}
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                        sx={{
+                          py: 1.5,
+                          transition: 'transform 0.2s',
+                          '&:not(:disabled):hover': {
+                            transform: 'translateY(-2px)'
+                          }
+                        }}
+                      >
+                        Delete Debtor
                       </Button>
                     </Grid>
                   </Grid>

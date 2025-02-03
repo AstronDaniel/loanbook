@@ -36,7 +36,6 @@ const LoanManagement = () => {
     duration: '', // Unified duration field
     status: 'Active',
   });
-  const [durationType, setDurationType] = useState('days'); // New state for duration type
   const [loans, setLoans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState(null);
@@ -84,11 +83,8 @@ const LoanManagement = () => {
 
   // Loan management functions
   const createLoan = async (loanData) => {
-    const durationInMilliseconds = durationType === 'days' 
-      ? loanData.duration * 24 * 60 * 60 * 1000 
-      : loanData.duration * 30 * 24 * 60 * 60 * 1000;
-
-    const startDate = new Date(); // Revert start date to the current date
+    const durationInMilliseconds = loanData.duration * 24 * 60 * 60 * 1000;
+    const startDate = new Date();
     const dueDate = new Date(startDate.getTime() + durationInMilliseconds).toISOString().split('T')[0];
 
     const newLoan = {
@@ -197,7 +193,6 @@ const LoanManagement = () => {
       duration: '', // Unified duration field
       status: 'Active',
     });
-    setDurationType('days'); // Reset duration type
     setIsEditing(false);
     setCurrentLoanId(null);
   };
@@ -212,7 +207,6 @@ const LoanManagement = () => {
       duration: loan.duration, // Unified duration field
       status: loan.status,
     });
-    setDurationType(loan.durationType || 'days'); // Set duration type
     setIsEditing(true);
     setCurrentLoanId(loan.id);
   };
@@ -325,19 +319,9 @@ const LoanManagement = () => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Select
-                    fullWidth
-                    value={durationType}
-                    onChange={(e) => setDurationType(e.target.value)}
-                  >
-                    <MenuItem value="days">Days</MenuItem>
-                    <MenuItem value="months">Months</MenuItem>
-                  </Select>
-                </Grid>
-                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label={`Duration (${durationType.charAt(0).toUpperCase() + durationType.slice(1)})`}
+                    label="Duration (Days)"
                     type="number"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
