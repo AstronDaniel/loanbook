@@ -17,11 +17,19 @@ import {
   Grid,
   Snackbar,
   CircularProgress,
-  InputAdornment
+  InputAdornment,
+  TableContainer,
+  Chip,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { Search as SearchIcon, Delete as DeleteIcon, Edit as EditIcon, LocalAtm as LoanIcon } from '@mui/icons-material';
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const db = getFirestore(app);
 
@@ -36,6 +44,10 @@ const LoanManagement = () => {
     duration: '', // Unified duration field
     status: 'Active',
   });
+   const [darkMode, setDarkMode] = useState(() => {
+      const savedDarkMode = localStorage.getItem('darkMode');
+      return savedDarkMode ? JSON.parse(savedDarkMode) : false;
+    });
   const [durationType, setDurationType] = useState('days'); // New state for duration type
   const [loans, setLoans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -154,6 +166,29 @@ const LoanManagement = () => {
     }
   };
 
+  const deleteLoanAndDebtor = async (loanId) => {
+    try {
+      const db = getFirestore(app);
+      // Delete the loan
+      await deleteDoc(doc(db, 'loans', loanId));
+  
+      // Find and delete the associated debtor
+      const querySnapshot = await getDocs(collection(db, 'debtors'));
+      const debtorDoc = querySnapshot.docs.find(doc => doc.data().loanId === loanId);
+      if (debtorDoc) {
+        await deleteDoc(doc(db, 'debtors', debtorDoc.id));
+      }
+  
+      setLoans(loans.filter(loan => loan.id !== loanId));
+      setSnackbarMessage('Loan and associated debtor deleted successfully');
+    } catch (error) {
+      console.error('Error deleting loan and debtor:', error);
+      setSnackbarMessage('Error deleting loan and debtor');
+    } finally {
+      setSnackbarOpen(true);
+    }
+  };
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -217,6 +252,27 @@ const LoanManagement = () => {
     setCurrentLoanId(loan.id);
   };
 
+  const handleDelete = (loan) => {
+    MySwal.fire({
+      title: 'Are you sure?',
+      text: `You won't be able to revert this! \nThis will delete the loan and associated debtor info for ${loan.customerName}.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        deleteLoanAndDebtor(loan.id);
+        MySwal.fire(
+          'Deleted!',
+          `The loan and associated debtor for ${loan.customerName} have been deleted.`,
+          'success'
+        );
+      }
+    });
+  };
+
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
   };
@@ -255,8 +311,49 @@ const LoanManagement = () => {
     }
   });
 
+  // Theme-based color schemes
+  const THEMES = {
+    light: {
+      background: 'bg-gray-50',
+      card: 'bg-white',
+      text: {
+        primary: 'text-gray-900',
+        secondary: 'text-gray-600',
+        accent: 'text-blue-600'
+      },
+      border: 'border-gray-200',
+      shadow: 'shadow-md',
+      iconBg: 'bg-blue-50'
+    },
+    dark: {
+      background: 'bg-gray-900',
+      card: 'bg-gray-800',
+      text: {
+        primary: 'text-gray-100',
+        secondary: 'text-gray-400',
+        accent: 'text-blue-400'
+      },
+      border: 'border-gray-700',
+      shadow: 'shadow-xl',
+      iconBg: 'bg-blue-900/50'
+    }
+  };
+
+  const currentTheme = THEMES[darkMode ? 'dark' : 'light'];
+
+  // Status color mapping
+  const getStatusColor = (status) => {
+    const statusColors = {
+      "Active": "success",
+      "Pending": "warning",
+      "Completed": "primary",
+      "Overdue": "error"
+    };
+    return statusColors[status] || "default";
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={`flex h-screen ${currentTheme.background}`}>
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
@@ -266,12 +363,13 @@ const LoanManagement = () => {
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
         toggleSidebar={toggleSidebar} 
+        darkMode={darkMode}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header toggleSidebar={toggleSidebar} />
-        <main className="flex-1 overflow-y-auto p-4">
-          <Paper elevation={3} className="p-4 mb-4 bg-white">
-            <Typography variant="h5">New Loan Registration</Typography>
+        <Header toggleSidebar={toggleSidebar} darkMode={darkMode} />
+        <main className={`flex-1 overflow-y-auto p-4 ${currentTheme.background}`}>
+          <Paper elevation={3} className={`p-4 mb-4 ${currentTheme.card} ${currentTheme.shadow}`}>
+            <Typography variant="h5" className={currentTheme.text.primary}>New Loan Registration</Typography>
             <form onSubmit={handleSubmit}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -281,6 +379,8 @@ const LoanManagement = () => {
                     value={formData.customerName}
                     onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                     required
+                    InputLabelProps={{ className: currentTheme.text.primary }}
+                    InputProps={{ className: currentTheme.text.primary }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -290,6 +390,8 @@ const LoanManagement = () => {
                     value={formData.phoneNumber}
                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
                     required
+                    InputLabelProps={{ className: currentTheme.text.primary }}
+                    InputProps={{ className: currentTheme.text.primary }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -297,6 +399,7 @@ const LoanManagement = () => {
                     fullWidth
                     value={formData.loanType}
                     onChange={(e) => setFormData({ ...formData, loanType: e.target.value })}
+                    className={currentTheme.text.primary}
                   >
                     <MenuItem value="Personal">Personal Loan</MenuItem>
                     <MenuItem value="Business">Business Loan</MenuItem>
@@ -312,6 +415,8 @@ const LoanManagement = () => {
                     value={formatNumberWithCommas(formData.amount)}
                     onChange={handleAmountChange}
                     required
+                    InputLabelProps={{ className: currentTheme.text.primary }}
+                    InputProps={{ className: currentTheme.text.primary }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -322,6 +427,8 @@ const LoanManagement = () => {
                     value={formatNumberWithCommas(formData.interestAmount)}
                     onChange={handleInterestAmountChange}
                     required
+                    InputLabelProps={{ className: currentTheme.text.primary }}
+                    InputProps={{ className: currentTheme.text.primary }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -329,6 +436,7 @@ const LoanManagement = () => {
                     fullWidth
                     value={durationType}
                     onChange={(e) => setDurationType(e.target.value)}
+                    className={currentTheme.text.primary}
                   >
                     <MenuItem value="days">Days</MenuItem>
                     <MenuItem value="months">Months</MenuItem>
@@ -342,6 +450,8 @@ const LoanManagement = () => {
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                     required
+                    InputLabelProps={{ className: currentTheme.text.primary }}
+                    InputProps={{ className: currentTheme.text.primary }}
                   />
                 </Grid>
               </Grid>
@@ -355,8 +465,8 @@ const LoanManagement = () => {
           </Paper>
 
           {/* Recent Loans Table */}
-          <Paper elevation={3} className="p-4">
-            <Typography variant="h6" className="mb-4">Recent Loans</Typography>
+          <Paper elevation={3} className={`p-4 ${currentTheme.card} ${currentTheme.shadow}`}>
+            <Typography variant="h6" className={`mb-4 ${currentTheme.text.primary}`}>Recent Loans</Typography>
             <Box className="mb-4">
               <TextField
                 fullWidth
@@ -370,46 +480,89 @@ const LoanManagement = () => {
                       <SearchIcon />
                     </InputAdornment>
                   ),
+                  className: currentTheme.text.primary
                 }}
                 variant="outlined"
               />
             </Box>
-            <Box className="overflow-x-auto">
-              <Table className="min-w-full bg-white" size="small">
-                <TableHead>
-                  <TableRow sx={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  }}>
-                    <TableCell onClick={() => handleSortChange('customerName')}>Customer</TableCell>
-                    <TableCell onClick={() => handleSortChange('loanType')}>Type</TableCell>
-                    <TableCell onClick={() => handleSortChange('amount')}>Amount</TableCell>
-                    <TableCell onClick={() => handleSortChange('interestAmount')}>Interest</TableCell>
-                    <TableCell onClick={() => handleSortChange('startDate')}>Start Date</TableCell>
-                    <TableCell onClick={() => handleSortChange('dueDate')}>Due Date</TableCell>
-                    <TableCell onClick={() => handleSortChange('status')}>Status</TableCell>
-                    <TableCell>Actions</TableCell>
+            <TableContainer sx={{ 
+              borderRadius: 3, 
+              overflow: 'hidden',
+              boxShadow: '0 5px 15px rgba(0,0,0,0.05)'
+            }}>
+              <Table>
+                <TableHead sx={{ 
+                  backgroundColor: '#f0f4f8',
+                  borderBottom: '2px solid #2196F3'
+                }}>
+                  <TableRow>
+                    {['Customer', 'Type', 'Amount', 'Interest', 'Start Date', 'Due Date', 'Status', 'Actions'].map((header) => (
+                      <TableCell 
+                        key={header} 
+                        sx={{ 
+                          fontWeight: 'bold', 
+                          color: '#2196F3',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        {header}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {sortedLoans.map((loan) => (
-                    <TableRow key={loan.id}>
+                    <TableRow 
+                      key={loan.id} 
+                      hover
+                      sx={{ 
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        transition: 'background-color 0.3s',
+                        '&:hover': { 
+                          backgroundColor: 'rgba(33, 150, 243, 0.05)' 
+                        }
+                      }}
+                    >
                       <TableCell>{loan.customerName}</TableCell>
-                      <TableCell>{loan.loanType}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          icon={<LoanIcon />} 
+                          label={loan.loanType} 
+                          size="small" 
+                          color="primary" 
+                          variant="outlined" 
+                        />
+                      </TableCell>
                       <TableCell>{formatCurrency(loan.amount)}</TableCell>
                       <TableCell>{formatCurrency(loan.interestAmount)}</TableCell>
                       <TableCell>{new Date(loan.startDate).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(loan.dueDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{loan.status}</TableCell>
                       <TableCell>
-                        <Button size="small" variant="outlined" onClick={() => handleEdit(loan)}>Edit</Button>
+                        <Chip 
+                          label={loan.status} 
+                          color={getStatusColor(loan.status)} 
+                          size="small" 
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip title="Edit Loan">
+                          <IconButton color="primary" size="small" onClick={() => handleEdit(loan)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Loan">
+                          <IconButton color="error" size="small" onClick={() => handleDelete(loan)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </Box>
+            </TableContainer>
             {loans.length === 0 && (
-              <Box className="text-center py-8 text-gray-500">No loans registered yet</Box>
+              <Box className={`text-center py-8 ${currentTheme.text.secondary}`}>No loans registered yet</Box>
             )}
           </Paper>
         </main>
