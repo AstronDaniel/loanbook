@@ -49,6 +49,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { app } from '../firebase';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
 
@@ -73,30 +75,7 @@ const IconWrapper = styled(Box)(({ theme }) => ({
 
 const LedgerPage = () => {
   // State Management
-  const [entries, setEntries] = useState([
-    { 
-      id: 1, 
-      date: '2025-01-30', 
-      description: 'Client Payment', 
-      reference: 'INV-001', 
-      type: 'credit', 
-      amount: 2500000, 
-      balance: 2500000, 
-      status: 'completed',
-      notes: 'Payment received for Project A'
-    },
-    { 
-      id: 2, 
-      date: '2025-01-29', 
-      description: 'Office Supplies', 
-      reference: 'EXP-001', 
-      type: 'debit', 
-      amount: 150000, 
-      balance: 2350000, 
-      status: 'pending',
-      notes: 'Monthly office supplies'
-    },
-  ]);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -124,6 +103,28 @@ const LedgerPage = () => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  // Fetch entries from Firestore
+  const fetchEntries = async () => {
+    setLoading(true);
+    try {
+      const db = getFirestore(app);
+      const entriesSnapshot = await getDocs(collection(db, 'ledgerEntries'));
+      const entriesData = entriesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setEntries(entriesData);
+    } catch (err) {
+      console.error('Error fetching entries:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntries();
+  }, []);
 
   // Computed Values
   const totalBalance = entries.reduce((acc, curr) => {
@@ -159,30 +160,41 @@ const LedgerPage = () => {
     setAnchorEl(null);
   };
 
-  const handleNewEntry = () => {
+  const handleNewEntry = async () => {
     const entry = {
-      id: entries.length + 1,
       ...newEntry,
       amount: Number(newEntry.amount),
       balance: totalBalance + (newEntry.type === 'credit' ? Number(newEntry.amount) : -Number(newEntry.amount))
     };
-    setEntries([entry, ...entries]);
-    setShowNewEntryDialog(false);
-    setNewEntry({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      description: '',
-      type: 'debit',
-      amount: '',
-      reference: '',
-      notes: '',
-      status: 'pending'
-    });
+    try {
+      const db = getFirestore(app);
+      await addDoc(collection(db, 'ledgerEntries'), entry);
+      setEntries([entry, ...entries]);
+      setShowNewEntryDialog(false);
+      setNewEntry({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        description: '',
+        type: 'debit',
+        amount: '',
+        reference: '',
+        notes: '',
+        status: 'pending'
+      });
+    } catch (err) {
+      console.error('Error adding new entry:', err);
+    }
   };
 
-  const handleDeleteEntry = () => {
-    setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
-    setDeleteDialogOpen(false);
-    setEntryToDelete(null);
+  const handleDeleteEntry = async () => {
+    try {
+      const db = getFirestore(app);
+      await deleteDoc(doc(db, 'ledgerEntries', entryToDelete.id));
+      setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
+      setDeleteDialogOpen(false);
+      setEntryToDelete(null);
+    } catch (err) {
+      console.error('Error deleting entry:', err);
+    }
   };
 
   const handleExport = () => {
