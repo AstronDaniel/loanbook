@@ -17,7 +17,6 @@ import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 
-// Comprehensive dummy revenue data with UGX currency
 const REVENUE_DATA = {
   '2024': {
     'January': {
@@ -46,19 +45,25 @@ const REVENUE_DATA = {
   }
 };
 
-const StyledCard = styled(Card)(({ theme }) => ({
-  background: 'linear-gradient(145deg, #e0e5eb 0%, #f9fafb 100%)',
-  borderRadius: '20px',
-  boxShadow: '0 15px 30px rgba(0,0,0,0.15)',
+const StyledCard = styled(Card)(({ theme, darkMode }) => ({
+  background: darkMode 
+    ? 'linear-gradient(135deg, #1a1a1a, #2d3748)'
+    : 'linear-gradient(135deg, #ffffff, #f3f4f6)',
+  borderRadius: '16px',
+  boxShadow: darkMode 
+    ? '0 4px 20px rgba(0,0,0,0.3)'
+    : '0 4px 20px rgba(0,0,0,0.1)',
   overflow: 'hidden',
-  transition: 'all 0.3s ease-in-out',
+  transition: 'transform 0.3s ease',
   '&:hover': {
-    transform: 'translateY(-10px)',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+    transform: 'translateY(-5px)',
+    boxShadow: darkMode 
+      ? '0 8px 30px rgba(0,0,0,0.4)'
+      : '0 8px 30px rgba(0,0,0,0.2)'
   }
 }));
 
-const RevenueTracker = () => {
+const RevenueTracker = ({ darkMode }) => {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [selectedMonth, setSelectedMonth] = useState('January');
 
@@ -70,26 +75,26 @@ const RevenueTracker = () => {
   const handleYearlyReport = () => {
     const yearData = REVENUE_DATA[selectedYear];
     const tableContent = `
-      <table style="width:100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <table style="width:100%; border-collapse: collapse; background-color: ${darkMode ? '#1a1a1a' : '#ffffff'}; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         <thead>
           <tr style="background-color: #4a90e2; color: white;">
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Month</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Customer Interest</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Bank Interest</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Bad Debtors Interest</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Bad Debtors Recovered</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Total Revenue</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Month</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Customer Interest</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Bank Interest</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Bad Debtors Interest</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Bad Debtors Recovered</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Total Revenue</th>
           </tr>
         </thead>
         <tbody>
           ${Object.entries(yearData).map(([month, data]) => `
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">${month}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.customerInterest.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.bankInterest.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.badDebtorsInterestRecovered.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.badDebtorsRecovered.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right; font-weight: bold;">UGX ${data.totalRevenue.toLocaleString()}</td>
+            <tr style="color: ${darkMode ? '#e2e8f0' : '#000000'}">
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: center; font-weight: bold;">${month}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.customerInterest.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.bankInterest.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.badDebtorsInterestRecovered.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.badDebtorsRecovered.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right; font-weight: bold;">UGX ${data.totalRevenue.toLocaleString()}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -100,7 +105,8 @@ const RevenueTracker = () => {
       title: `${selectedYear} Revenue Report`,
       html: tableContent,
       width: '95%',
-      background: 'linear-gradient(to right, #f5f7fa, #e9ecef)',
+      background: darkMode ? '#1a1a1a' : 'linear-gradient(to right, #f5f7fa, #e9ecef)',
+      color: darkMode ? '#e2e8f0' : '#000000',
       showCloseButton: true,
       showConfirmButton: false,
       showCancelButton: true,
@@ -155,23 +161,26 @@ const RevenueTracker = () => {
   };
 
   return (
-    <StyledCard sx={{ maxWidth: 400, margin: 'auto' }}>
+    <StyledCard sx={{ maxWidth: 400, margin: 'auto' }} darkMode={darkMode}>
       <CardContent>
-        <Typography variant="h4" sx={{ 
-          mb: 3, 
-          textAlign: 'center', 
-          color: '#4a90e2', 
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          letterSpacing: '1px'
-        }}>
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            mb: 3, 
+            textAlign: 'center', 
+            color: darkMode ? '#60a5fa' : '#4a90e2', 
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '1px'
+          }}
+        >
           Revenue Tracker
         </Typography>
         
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6}>
             <FormControl fullWidth>
-              <InputLabel>Year</InputLabel>
+              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Year</InputLabel>
               <Select
                 value={selectedYear}
                 label="Year"
@@ -180,6 +189,12 @@ const RevenueTracker = () => {
                   setSelectedMonth(Object.keys(REVENUE_DATA[e.target.value])[0]);
                 }}
                 variant="outlined"
+                sx={{
+                  color: darkMode ? '#e2e8f0' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
+                  }
+                }}
               >
                 {years.map(year => (
                   <MenuItem key={year} value={year}>{year}</MenuItem>
@@ -189,12 +204,18 @@ const RevenueTracker = () => {
           </Grid>
           <Grid item xs={6}>
             <FormControl fullWidth>
-              <InputLabel>Month</InputLabel>
+              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Month</InputLabel>
               <Select
                 value={selectedMonth}
                 label="Month"
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 variant="outlined"
+                sx={{
+                  color: darkMode ? '#e2e8f0' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
+                  }
+                }}
               >
                 {months.map(month => (
                   <MenuItem key={month} value={month}>{month}</MenuItem>
@@ -204,29 +225,37 @@ const RevenueTracker = () => {
           </Grid>
         </Grid>
 
-        <Paper elevation={3} sx={{ padding: 2, marginBottom: 2 }}>
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            padding: 2, 
+            marginBottom: 2,
+            backgroundColor: darkMode ? '#2d3748' : '#ffffff',
+            color: darkMode ? '#e2e8f0' : 'inherit'
+          }}
+        >
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Customer Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Customer Interest</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
                 UGX {monthData.customerInterest?.toLocaleString() || 0}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Bank Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bank Interest</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
                 UGX {monthData.bankInterest?.toLocaleString() || 0}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Bad Debtors Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bad Debtors Interest</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
                 UGX {monthData.badDebtorsInterestRecovered?.toLocaleString() || 0}
               </Typography>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Bad Debtors Recovered</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bad Debtors Recovered</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
                 UGX {monthData.badDebtorsRecovered?.toLocaleString() || 0}
               </Typography>
             </Grid>
@@ -240,12 +269,14 @@ const RevenueTracker = () => {
             fullWidth 
             onClick={handleYearlyReport}
             sx={{ 
-              borderRadius: '8px', 
-              padding: '12px', 
+              borderRadius: '12px', 
+              padding: '14px', 
               fontWeight: 'bold',
               transition: 'transform 0.2s ease-in-out',
+              backgroundColor: darkMode ? '#60a5fa' : '#4a90e2',
               '&:hover': {
-                transform: 'scale(1.02)'
+                transform: 'scale(1.03)',
+                backgroundColor: darkMode ? '#3b82f6' : '#357abd'
               }
             }}
           >

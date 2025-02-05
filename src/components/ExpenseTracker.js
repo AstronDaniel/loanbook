@@ -54,19 +54,25 @@ const EXPENSES_DATA = {
   }
 };
 
-const StyledCard = styled(Card)(({ theme }) => ({
-  background: 'linear-gradient(145deg, #e0e5eb 0%, #f9fafb 100%)',
+const StyledCard = styled(Card)(({ theme, darkMode }) => ({
+  background: darkMode 
+    ? 'linear-gradient(145deg, #1a1a1a 0%, #2d3748 100%)'
+    : 'linear-gradient(145deg, #e0e5eb 0%, #f9fafb 100%)',
   borderRadius: '20px',
-  boxShadow: '0 15px 30px rgba(0,0,0,0.15)',
+  boxShadow: darkMode
+    ? '0 15px 30px rgba(0,0,0,0.3)'
+    : '0 15px 30px rgba(0,0,0,0.15)',
   overflow: 'hidden',
   transition: 'all 0.3s ease-in-out',
   '&:hover': {
     transform: 'translateY(-10px)',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+    boxShadow: darkMode
+      ? '0 20px 40px rgba(0,0,0,0.4)'
+      : '0 20px 40px rgba(0,0,0,0.2)'
   }
 }));
 
-const ExpensesTracker = () => {
+const ExpensesTracker = ({ darkMode }) => {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [selectedMonth, setSelectedMonth] = useState('January');
 
@@ -78,32 +84,32 @@ const ExpensesTracker = () => {
   const handleYearlyReport = () => {
     const yearData = EXPENSES_DATA[selectedYear];
     const tableContent = `
-      <table style="width:100%; border-collapse: collapse; background-color: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <table style="width:100%; border-collapse: collapse; background-color: ${darkMode ? '#1a1a1a' : '#ffffff'}; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         <thead>
           <tr style="background-color: #4a90e2; color: white;">
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Month</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Service Charge</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Withdraw Charges</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Bad Debtors Written Off</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Transport Transfer Fees</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Annual Debit Card Fee</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Withholding Tax</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Airtime and Data</th>
-            <th style="border: 1px solid #ddd; padding: 15px; text-align: center;">Total Expenses</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Month</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Service Charge</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Withdraw Charges</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Bad Debtors Written Off</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Transport Transfer Fees</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Annual Debit Card Fee</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Withholding Tax</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Airtime and Data</th>
+            <th style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 15px; text-align: center;">Total Expenses</th>
           </tr>
         </thead>
         <tbody>
           ${Object.entries(yearData).map(([month, data]) => `
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: center; font-weight: bold;">${month}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.serviceCharge.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.withdrawCharges.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.badDebtorsWrittenOff.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.transportTransferFees.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.annualDebitCardFee.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.withholdingTax.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right;">UGX ${data.airtimeAndData.toLocaleString()}</td>
-              <td style="border: 1px solid #ddd; padding: 12px; text-align: right; font-weight: bold;">UGX ${data.totalExpenses.toLocaleString()}</td>
+            <tr style="color: ${darkMode ? '#e2e8f0' : '#000000'}">
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: center; font-weight: bold;">${month}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.serviceCharge.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.withdrawCharges.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.badDebtorsWrittenOff.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.transportTransferFees.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.annualDebitCardFee.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.withholdingTax.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right;">UGX ${data.airtimeAndData.toLocaleString()}</td>
+              <td style="border: 1px solid ${darkMode ? '#404040' : '#ddd'}; padding: 12px; text-align: right; font-weight: bold;">UGX ${data.totalExpenses.toLocaleString()}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -114,7 +120,8 @@ const ExpensesTracker = () => {
       title: `${selectedYear} Expenses Report`,
       html: tableContent,
       width: '95%',
-      background: 'linear-gradient(to right, #f5f7fa, #e9ecef)',
+      background: darkMode ? '#1a1a1a' : 'linear-gradient(to right, #f5f7fa, #e9ecef)',
+      color: darkMode ? '#e2e8f0' : '#000000',
       showCloseButton: true,
       showConfirmButton: false,
       showCancelButton: true,
@@ -172,12 +179,12 @@ const ExpensesTracker = () => {
   };
 
   return (
-    <StyledCard sx={{ maxWidth: 500, margin: 'auto' }}>
+    <StyledCard sx={{ maxWidth: 500, margin: 'auto' }} darkMode={darkMode}>
       <CardContent>
         <Typography variant="h4" sx={{ 
           mb: 3, 
           textAlign: 'center', 
-          color: '#4a90e2', 
+          color: darkMode ? '#60a5fa' : '#4a90e2', 
           fontWeight: 'bold',
           textTransform: 'uppercase',
           letterSpacing: '1px'
@@ -188,7 +195,7 @@ const ExpensesTracker = () => {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={6}>
             <FormControl fullWidth>
-              <InputLabel>Year</InputLabel>
+              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Year</InputLabel>
               <Select
                 value={selectedYear}
                 label="Year"
@@ -197,6 +204,12 @@ const ExpensesTracker = () => {
                   setSelectedMonth(Object.keys(EXPENSES_DATA[e.target.value])[0]);
                 }}
                 variant="outlined"
+                sx={{
+                  color: darkMode ? '#e2e8f0' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
+                  }
+                }}
               >
                 {years.map(year => (
                   <MenuItem key={year} value={year}>{year}</MenuItem>
@@ -206,12 +219,18 @@ const ExpensesTracker = () => {
           </Grid>
           <Grid item xs={6}>
             <FormControl fullWidth>
-              <InputLabel>Month</InputLabel>
+              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Month</InputLabel>
               <Select
                 value={selectedMonth}
                 label="Month"
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 variant="outlined"
+                sx={{
+                  color: darkMode ? '#e2e8f0' : 'inherit',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
+                  }
+                }}
               >
                 {months.map(month => (
                   <MenuItem key={month} value={month}>{month}</MenuItem>
@@ -221,50 +240,35 @@ const ExpensesTracker = () => {
           </Grid>
         </Grid>
 
-        <Paper elevation={3} sx={{ padding: 2, marginBottom: 2 }}>
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            padding: 2, 
+            marginBottom: 2,
+            backgroundColor: darkMode ? '#2d3748' : '#ffffff',
+            color: darkMode ? '#e2e8f0' : 'inherit'
+          }}
+        >
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Service Charge</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.serviceCharge?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Withdraw Charges</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.withdrawCharges?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Bad Debtors Written Off</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.badDebtorsWrittenOff?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Transport Transfer Fees</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.transportTransferFees?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Annual Debit Card Fee</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.annualDebitCardFee?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Withholding Tax</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.withholdingTax?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" color="primary">Airtime and Data</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                UGX {monthData.airtimeAndData?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
+            {[
+              { label: 'Service Charge', value: monthData.serviceCharge },
+              { label: 'Withdraw Charges', value: monthData.withdrawCharges },
+              { label: 'Bad Debtors Written Off', value: monthData.badDebtorsWrittenOff },
+              { label: 'Transport Transfer Fees', value: monthData.transportTransferFees },
+              { label: 'Annual Debit Card Fee', value: monthData.annualDebitCardFee },
+              { label: 'Withholding Tax', value: monthData.withholdingTax },
+              { label: 'Airtime and Data', value: monthData.airtimeAndData },
+              { label: 'Total Expenses', value: monthData.totalExpenses }
+            ].map((item, index) => (
+              <Grid item xs={12} sm={6} key={index}>
+                <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>
+                  {item.label}
+                </Typography>
+                <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
+                  UGX {item.value?.toLocaleString() || 0}
+                </Typography>
+              </Grid>
+            ))}
           </Grid>
         </Paper>
 
@@ -279,8 +283,10 @@ const ExpensesTracker = () => {
               padding: '12px', 
               fontWeight: 'bold',
               transition: 'transform 0.2s ease-in-out',
+              backgroundColor: darkMode ? '#60a5fa' : '#4a90e2',
               '&:hover': {
-                transform: 'scale(1.02)'
+                transform: 'scale(1.03)',
+                backgroundColor: darkMode ? '#3b82f6' : '#357abd'
               }
             }}
           >
