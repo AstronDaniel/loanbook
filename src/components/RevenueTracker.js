@@ -1,18 +1,8 @@
-import React, { useState } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  Typography, 
-  Grid, 
-  Select, 
-  MenuItem, 
-  FormControl, 
-  InputLabel, 
-  Button,
-  Box,
-  Paper
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
+"use client";
+
+import { useState } from "react";
+import { Card, CardContent, Typography, Select, MenuItem, Button } from "@mui/material";
+import { DollarSign } from "lucide-react";
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
@@ -45,31 +35,12 @@ const REVENUE_DATA = {
   }
 };
 
-const StyledCard = styled(Card)(({ theme, darkMode }) => ({
-  background: darkMode 
-    ? 'linear-gradient(135deg, #1a1a1a, #2d3748)'
-    : 'linear-gradient(135deg, #ffffff, #f3f4f6)',
-  borderRadius: '16px',
-  boxShadow: darkMode 
-    ? '0 4px 20px rgba(0,0,0,0.3)'
-    : '0 4px 20px rgba(0,0,0,0.1)',
-  overflow: 'hidden',
-  transition: 'transform 0.3s ease',
-  '&:hover': {
-    transform: 'translateY(-5px)',
-    boxShadow: darkMode 
-      ? '0 8px 30px rgba(0,0,0,0.4)'
-      : '0 8px 30px rgba(0,0,0,0.2)'
-  }
-}));
-
 const RevenueTracker = ({ darkMode }) => {
-  const [selectedYear, setSelectedYear] = useState('2024');
-  const [selectedMonth, setSelectedMonth] = useState('January');
+  const [selectedYear, setSelectedYear] = useState("2024");
+  const [selectedMonth, setSelectedMonth] = useState("January");
 
   const years = Object.keys(REVENUE_DATA);
   const months = Object.keys(REVENUE_DATA[selectedYear] || {});
-
   const monthData = REVENUE_DATA[selectedYear]?.[selectedMonth] || {};
 
   const handleYearlyReport = () => {
@@ -161,130 +132,79 @@ const RevenueTracker = ({ darkMode }) => {
   };
 
   return (
-    <StyledCard sx={{ maxWidth: 400, margin: 'auto' }} darkMode={darkMode}>
-      <CardContent>
-        <Typography 
-          variant="h4" 
-          sx={{ 
-            mb: 3, 
-            textAlign: 'center', 
-            color: darkMode ? '#60a5fa' : '#4a90e2', 
-            fontWeight: 'bold',
-            textTransform: 'uppercase',
-            letterSpacing: '1px'
-          }}
-        >
-          Revenue Tracker
+    <Card
+      className={`transform transition-all duration-300 hover:scale-105 ${darkMode ? "bg-gray-800 text-white" : "bg-white"}`}
+    >
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <Typography variant="h5" component="h2" className="font-bold">
+            Revenue
+          </Typography>
+          <DollarSign className="w-6 h-6 text-green-500" />
+        </div>
+        <Typography variant="h3" component="p" className="mb-4 font-bold text-green-500">
+          ${(monthData.totalRevenue / 1000000).toFixed(2)}M
         </Typography>
-        
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={6}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Year</InputLabel>
-              <Select
-                value={selectedYear}
-                label="Year"
-                onChange={(e) => {
-                  setSelectedYear(e.target.value);
-                  setSelectedMonth(Object.keys(REVENUE_DATA[e.target.value])[0]);
-                }}
-                variant="outlined"
-                sx={{
-                  color: darkMode ? '#e2e8f0' : 'inherit',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
-                  }
-                }}
-              >
-                {years.map(year => (
-                  <MenuItem key={year} value={year}>{year}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={6}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: darkMode ? '#e2e8f0' : 'inherit' }}>Month</InputLabel>
-              <Select
-                value={selectedMonth}
-                label="Month"
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                variant="outlined"
-                sx={{
-                  color: darkMode ? '#e2e8f0' : 'inherit',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: darkMode ? '#404040' : 'rgba(0, 0, 0, 0.23)'
-                  }
-                }}
-              >
-                {months.map(month => (
-                  <MenuItem key={month} value={month}>{month}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
-
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            padding: 2, 
-            marginBottom: 2,
-            backgroundColor: darkMode ? '#2d3748' : '#ffffff',
-            color: darkMode ? '#e2e8f0' : 'inherit'
-          }}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+              Customer Interest
+            </Typography>
+            <Typography variant="h6" className="font-semibold">
+              ${(monthData.customerInterest / 1000000).toFixed(2)}M
+            </Typography>
+          </div>
+          <div>
+            <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+              Bank Interest
+            </Typography>
+            <Typography variant="h6" className="font-semibold">
+              ${(monthData.bankInterest / 1000000).toFixed(2)}M
+            </Typography>
+          </div>
+          <div>
+            <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+              Bad Debtors Interest
+            </Typography>
+            <Typography variant="h6" className="font-semibold">
+              ${(monthData.badDebtorsInterestRecovered / 1000000).toFixed(2)}M
+            </Typography>
+          </div>
+          <div>
+            <Typography variant="body2" className="text-gray-500 dark:text-gray-400">
+              Bad Debtors Recovered
+            </Typography>
+            <Typography variant="h6" className="font-semibold">
+              ${(monthData.badDebtorsRecovered / 1000000).toFixed(2)}M
+            </Typography>
+          </div>
+        </div>
+        <div className="flex gap-4 mb-4">
+          <Select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="w-1/2">
+            {years.map((year) => (
+              <MenuItem key={year} value={year}>
+                {year}
+              </MenuItem>
+            ))}
+          </Select>
+          <Select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-1/2">
+            {months.map((month) => (
+              <MenuItem key={month} value={month}>
+                {month}
+              </MenuItem>
+            ))}
+          </Select>
+        </div>
+        <Button
+          onClick={handleYearlyReport}
+          variant="contained"
+          fullWidth
+          className="bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors duration-200"
         >
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Customer Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
-                UGX {monthData.customerInterest?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bank Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
-                UGX {monthData.bankInterest?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bad Debtors Interest</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
-                UGX {monthData.badDebtorsInterestRecovered?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h6" sx={{ color: darkMode ? '#60a5fa' : 'primary' }}>Bad Debtors Recovered</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold', color: darkMode ? '#e2e8f0' : 'inherit' }}>
-                UGX {monthData.badDebtorsRecovered?.toLocaleString() || 0}
-              </Typography>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        <Box sx={{ mt: 3 }}>
-          <Button 
-            variant="contained" 
-            color="primary" 
-            fullWidth 
-            onClick={handleYearlyReport}
-            sx={{ 
-              borderRadius: '12px', 
-              padding: '14px', 
-              fontWeight: 'bold',
-              transition: 'transform 0.2s ease-in-out',
-              backgroundColor: darkMode ? '#60a5fa' : '#4a90e2',
-              '&:hover': {
-                transform: 'scale(1.03)',
-                backgroundColor: darkMode ? '#3b82f6' : '#357abd'
-              }
-            }}
-          >
-            View Full Yearly Report
-          </Button>
-        </Box>
+          View Full Yearly Report
+        </Button>
       </CardContent>
-    </StyledCard>
+    </Card>
   );
 };
 
