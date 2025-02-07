@@ -44,14 +44,11 @@ const LoanManagement = () => {
     duration: '', // Unified duration field
     status: 'Active',
   });
-<<<<<<< HEAD
-=======
    const [darkMode, setDarkMode] = useState(() => {
       const savedDarkMode = localStorage.getItem('darkMode');
       return savedDarkMode ? JSON.parse(savedDarkMode) : false;
     });
   const [durationType, setDurationType] = useState('days'); // New state for duration type
->>>>>>> 94db6dc98c863800611ee91258ea8e8abea8f9b2
   const [loans, setLoans] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState(null);
@@ -430,8 +427,6 @@ const LoanManagement = () => {
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
-<<<<<<< HEAD
-=======
                   <Select
                     fullWidth
                     value={durationType}
@@ -443,7 +438,6 @@ const LoanManagement = () => {
                   </Select>
                 </Grid>
                 <Grid item xs={12} sm={6}>
->>>>>>> 94db6dc98c863800611ee91258ea8e8abea8f9b2
                   <TextField
                     fullWidth
                     label="Duration (Days)"

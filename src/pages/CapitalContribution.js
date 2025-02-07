@@ -33,10 +33,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format } from 'date-fns';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
-<<<<<<< HEAD
-import { localStorageService, initializeCapitalContributions } from '../services/localStorage'; // Adjust the path as necessary
- 
-=======
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { app } from '../firebase';
 
@@ -93,7 +89,6 @@ const StatCard = ({ title, value, icon: Icon, trend, color }) => {
   );
 };
 
->>>>>>> 94db6dc98c863800611ee91258ea8e8abea8f9b2
 const CapitalContributions = () => {
   const theme = useTheme();
   const [investors, setInvestors] = useState([]);
@@ -113,16 +108,9 @@ const CapitalContributions = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showNewContributionDialog, setShowNewContributionDialog] = useState(false);
 
-<<<<<<< HEAD
-  useEffect(() => { 
-    const { investors, contributions } = initializeCapitalContributions();
-    setInvestors(investors);
-    setContributions(contributions);
-=======
   useEffect(() => {
     fetchInvestors();
     fetchContributions();
->>>>>>> 94db6dc98c863800611ee91258ea8e8abea8f9b2
   }, []);
 
   const fetchInvestors = async () => {
