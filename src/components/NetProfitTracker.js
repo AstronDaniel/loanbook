@@ -80,14 +80,20 @@ const NetProfitTracker = ({ darkMode }) => {
 
           const netProfit = totalRevenue - totalExpenses;
 
+          // Fetch distributions data
+          const distributionsQuery = query(collection(db, 'distributions'), where('date', '>=', startDate), where('date', '<=', endDate));
+          const distributionsSnapshot = await getDocs(distributionsQuery);
+          const distributions = distributionsSnapshot.docs.map(doc => doc.data());
+          const totalDistributions = distributions.reduce((acc, data) => acc + (data.amount || 0), 0);
+
           return {
             month,
             data: {
               totalRevenue,
               totalExpenses,
               netProfit,
-              distributionToShareholders: netProfit / 2,
-              retainedEarnings: netProfit / 2
+              distributionToShareholders: totalDistributions,
+              retainedEarnings: netProfit - totalDistributions
             }
           };
         })
