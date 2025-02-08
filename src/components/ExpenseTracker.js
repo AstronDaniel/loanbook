@@ -14,7 +14,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 const db = getFirestore(app);
 
-const ExpensesTracker = ({ darkMode }) => {
+const ExpenseTracker = ({ darkMode }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(selectedDate.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(selectedDate.toLocaleString('default', { month: 'long' }));
@@ -298,4 +298,4 @@ const ExpensesTracker = ({ darkMode }) => {
   );
 };
 
-export default ExpensesTracker;
+export default ExpenseTracker;

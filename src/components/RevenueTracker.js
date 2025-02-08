@@ -1,5 +1,6 @@
 "use client";
 
+import React from 'react';
 import { useState, useEffect } from "react";
 import { Card, CardContent, Typography, Button, TextField } from "@mui/material";
 import { DollarSign } from "lucide-react";

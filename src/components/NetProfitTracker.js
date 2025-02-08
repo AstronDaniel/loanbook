@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, Typography, Button, TextField } from "@mui/material";
 import { TrendingUp } from "lucide-react";
 import Swal from 'sweetalert2';
