@@ -27,6 +27,7 @@ import {
   LinearProgress,
   Divider,
   Alert,
+  Snackbar,
   styled,
   useTheme
 } from '@mui/material';
@@ -49,6 +50,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { app } from '../firebase';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
 
@@ -73,30 +76,7 @@ const IconWrapper = styled(Box)(({ theme }) => ({
 
 const LedgerPage = () => {
   // State Management
-  const [entries, setEntries] = useState([
-    { 
-      id: 1, 
-      date: '2025-01-30', 
-      description: 'Client Payment', 
-      reference: 'INV-001', 
-      type: 'credit', 
-      amount: 2500000, 
-      balance: 2500000, 
-      status: 'completed',
-      notes: 'Payment received for Project A'
-    },
-    { 
-      id: 2, 
-      date: '2025-01-29', 
-      description: 'Office Supplies', 
-      reference: 'EXP-001', 
-      type: 'debit', 
-      amount: 150000, 
-      balance: 2350000, 
-      status: 'pending',
-      notes: 'Monthly office supplies'
-    },
-  ]);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEntry, setSelectedEntry] = useState(null);
@@ -110,12 +90,22 @@ const LedgerPage = () => {
   const [newEntry, setNewEntry] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     description: '',
-    type: 'debit',
-    amount: '',
+    type: 'revenue',
     reference: '',
     notes: '',
-    status: 'pending'
+    status: 'pending',
+    bankInterest: '',
+    serviceCharge: '',
+    withdrawCharges: '',
+    transport: '',
+    transferFee: '',
+    annualDebitCardFee: '',
+    withholdingTax: '',
+    airtimeAndData: ''
   });
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [creatingEntry, setCreatingEntry] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -125,9 +115,82 @@ const LedgerPage = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const formatNumberWithCommas = (number) => {
+    return number.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+
+  const handleBankInterestChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, bankInterest: value });
+  };
+
+  const handleServiceChargeChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, serviceCharge: value });
+  };
+
+  const handleWithdrawChargesChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, withdrawCharges: value });
+  };
+
+  const handleTransportChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, transport: value });
+  };
+
+  const handleTransferFeeChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, transferFee: value });
+  };
+
+  const handleAnnualDebitCardFeeChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, annualDebitCardFee: value });
+  };
+
+  const handleWithholdingTaxChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, withholdingTax: value });
+  };
+
+  const handleAirtimeAndDataChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    setNewEntry({ ...newEntry, airtimeAndData: value });
+  };
+
+  // Fetch entries from Firestore
+  const fetchEntries = async () => {
+    setLoading(true);
+    try {
+      const db = getFirestore(app);
+      const revenueSnapshot = await getDocs(collection(db, 'revenue'));
+      const expensesSnapshot = await getDocs(collection(db, 'expenses'));
+      const revenueData = revenueSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'revenue'
+      }));
+      const expensesData = expensesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'expenses'
+      }));
+      setEntries([...revenueData, ...expensesData]);
+    } catch (err) {
+      console.error('Error fetching entries:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
   // Computed Values
   const totalBalance = entries.reduce((acc, curr) => {
-    return curr.type === 'credit' ? acc + curr.amount : acc - curr.amount;
+    return curr.type === 'revenue' ? acc + (curr.bankInterest || 0) : acc - (curr.bankInterest || 0);
   }, 0);
 
   const monthlyTransactions = entries.length;
@@ -159,42 +222,84 @@ const LedgerPage = () => {
     setAnchorEl(null);
   };
 
-  const handleNewEntry = () => {
+  const handleNewEntry = async () => {
+    setCreatingEntry(true);
     const entry = {
-      id: entries.length + 1,
       ...newEntry,
-      amount: Number(newEntry.amount),
-      balance: totalBalance + (newEntry.type === 'credit' ? Number(newEntry.amount) : -Number(newEntry.amount))
+      bankInterest: Number(newEntry.bankInterest),
+      serviceCharge: Number(newEntry.serviceCharge),
+      withdrawCharges: Number(newEntry.withdrawCharges),
+      transport: Number(newEntry.transport),
+      transferFee: Number(newEntry.transferFee),
+      annualDebitCardFee: Number(newEntry.annualDebitCardFee),
+      withholdingTax: Number(newEntry.withholdingTax),
+      airtimeAndData: Number(newEntry.airtimeAndData)
     };
-    setEntries([entry, ...entries]);
-    setShowNewEntryDialog(false);
-    setNewEntry({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      description: '',
-      type: 'debit',
-      amount: '',
-      reference: '',
-      notes: '',
-      status: 'pending'
-    });
+    try {
+      const db = getFirestore(app);
+      const collectionName = newEntry.type === 'revenue' ? 'revenue' : 'expenses';
+      await addDoc(collection(db, collectionName), entry);
+      setEntries([entry, ...entries]);
+      setShowNewEntryDialog(false);
+      setNewEntry({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        description: '',
+        type: 'revenue',
+        reference: '',
+        notes: '',
+        status: 'pending',
+        bankInterest: '',
+        serviceCharge: '',
+        withdrawCharges: '',
+        transport: '',
+        transferFee: '',
+        annualDebitCardFee: '',
+        withholdingTax: '',
+        airtimeAndData: ''
+      });
+      setSnackbarMessage('Entry added successfully');
+    } catch (err) {
+      console.error('Error adding new entry:', err);
+      setSnackbarMessage('Error adding new entry');
+    } finally {
+      setCreatingEntry(false);
+      setSnackbarOpen(true);
+    }
   };
 
-  const handleDeleteEntry = () => {
-    setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
-    setDeleteDialogOpen(false);
-    setEntryToDelete(null);
+  const handleDeleteEntry = async () => {
+    try {
+      const db = getFirestore(app);
+      const collectionName = entryToDelete.type === 'revenue' ? 'revenue' : 'expenses';
+      await deleteDoc(doc(db, collectionName, entryToDelete.id));
+      setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
+      setDeleteDialogOpen(false);
+      setEntryToDelete(null);
+      setSnackbarMessage('Entry deleted successfully');
+    } catch (err) {
+      console.error('Error deleting entry:', err);
+      setSnackbarMessage('Error deleting entry');
+    } finally {
+      setSnackbarOpen(true);
+    }
   };
 
   const handleExport = () => {
     const csv = [
-      ['Date', 'Description', 'Reference', 'Type', 'Amount', 'Balance', 'Status'],
+      ['Date', 'Description', 'Reference', 'Type', 'Bank Interest', 'Service Charge', 'Withdraw Charges', 'Transport', 'Transfer Fee', 'Annual Debit Card Fee', 'Withholding Tax', 'Airtime and Data', 'Status'],
       ...entries.map(entry => [
         entry.date,
         entry.description,
         entry.reference,
         entry.type,
-        entry.amount,
-        entry.balance,
+        entry.bankInterest,
+        entry.serviceCharge,
+        entry.withdrawCharges,
+        entry.transport,
+        entry.transferFee,
+        entry.annualDebitCardFee,
+        entry.withholdingTax,
+        entry.airtimeAndData,
         entry.status
       ])
     ].map(row => row.join(',')).join('\n');
@@ -205,6 +310,10 @@ const LedgerPage = () => {
     a.href = url;
     a.download = `ledger-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   // Components
@@ -432,13 +541,35 @@ const LedgerPage = () => {
                           
                           <Box sx={{ flex: 1, textAlign: 'right' }}>
                             <Typography
-                              color={entry.type === 'credit' ? 'success.main' : 'error.main'}
+                              color={entry.type === 'revenue' ? 'success.main' : 'error.main'}
                             >
-                              {entry.type === 'credit' ? '+' : '-'} UGX {entry.amount.toLocaleString()}
+                              {entry.type === 'revenue' ? '+' : '-'} UGX {(entry.bankInterest || 0).toLocaleString()}
                             </Typography>
-                            <Typography variant="body2" color="textSecondary">
-                              Balance: UGX {entry.balance.toLocaleString()}
-                            </Typography>
+                            {entry.type === 'expenses' && (
+                              <>
+                                <Typography color="textSecondary" variant="body2">
+                                  Service Charge: UGX {(entry.serviceCharge || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Withdraw Charges: UGX {(entry.withdrawCharges || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Transport: UGX {(entry.transport || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Transfer Fee: UGX {(entry.transferFee || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Annual Debit Card Fee: UGX {(entry.annualDebitCardFee || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Withholding Tax: UGX {(entry.withholdingTax || 0).toLocaleString()}
+                                </Typography>
+                                <Typography color="textSecondary" variant="body2">
+                                  Airtime and Data: UGX {(entry.airtimeAndData || 0).toLocaleString()}
+                                </Typography>
+                              </>
+                            )}
                           </Box>
                           
                           <Box sx={{ width: 100, textAlign: 'center', mx: 2 }}>
@@ -525,11 +656,36 @@ const LedgerPage = () => {
                   </Grid>
                   <Grid item xs={6}>
                     <Typography color="textSecondary" gutterBottom>
-                      Amount
+                      {selectedEntry.type === 'expenses' ? 'Bank Interest' : 'Amount'}
                     </Typography>
-                    <Typography color={selectedEntry.type === 'credit' ? 'success.main' : 'error.main'}>
-                      {selectedEntry.type === 'credit' ? '+' : '-'} UGX {selectedEntry.amount.toLocaleString()}
+                    <Typography color={selectedEntry.type === 'revenue' ? 'success.main' : 'error.main'}>
+                      {selectedEntry.type === 'revenue' ? '+' : '-'} UGX {(selectedEntry.bankInterest || 0).toLocaleString()}
                     </Typography>
+                    {selectedEntry.type === 'expenses' && (
+                      <>
+                        <Typography color="textSecondary" variant="body2">
+                          Service Charge: UGX {(selectedEntry.serviceCharge || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Withdraw Charges: UGX {(selectedEntry.withdrawCharges || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Transport: UGX {(selectedEntry.transport || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Transfer Fee: UGX {(selectedEntry.transferFee || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Annual Debit Card Fee: UGX {(selectedEntry.annualDebitCardFee || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Withholding Tax: UGX {(selectedEntry.withholdingTax || 0).toLocaleString()}
+                        </Typography>
+                        <Typography color="textSecondary" variant="body2">
+                          Airtime and Data: UGX {(selectedEntry.airtimeAndData || 0).toLocaleString()}
+                        </Typography>
+                      </>
+                    )}
                   </Grid>
                   <Grid item xs={6}>
                     <Typography color="textSecondary" gutterBottom>
@@ -579,11 +735,121 @@ const LedgerPage = () => {
                       label="Type"
                       onChange={(e) => setNewEntry({...newEntry, type: e.target.value})}
                     >
-                      <MenuItem value="debit">Debit</MenuItem>
-                      <MenuItem value="credit">Credit</MenuItem>
+                      <MenuItem value="revenue">Revenue</MenuItem>
+                      <MenuItem value="expenses">Expenses</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
+                {newEntry.type === 'revenue' && (
+                  <Grid item xs={12}>
+                    <TextField
+                      label="Bank Interest"
+                      value={formatNumberWithCommas(newEntry.bankInterest)}
+                      onChange={handleBankInterestChange}
+                      fullWidth
+                      type="text"
+                      InputProps={{
+                        startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                        inputProps: { min: 0, step: 0.01 }
+                      }}
+                    />
+                  </Grid>
+                )}
+                {newEntry.type === 'expenses' && (
+                  <>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Service Charge"
+                        value={formatNumberWithCommas(newEntry.serviceCharge)}
+                        onChange={handleServiceChargeChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Withdraw Charges"
+                        value={formatNumberWithCommas(newEntry.withdrawCharges)}
+                        onChange={handleWithdrawChargesChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Transport"
+                        value={formatNumberWithCommas(newEntry.transport)}
+                        onChange={handleTransportChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Transfer Fee"
+                        value={formatNumberWithCommas(newEntry.transferFee)}
+                        onChange={handleTransferFeeChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Annual Debit Card Fee"
+                        value={formatNumberWithCommas(newEntry.annualDebitCardFee)}
+                        onChange={handleAnnualDebitCardFeeChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Withholding Tax"
+                        value={formatNumberWithCommas(newEntry.withholdingTax)}
+                        onChange={handleWithholdingTaxChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Airtime and Data"
+                        value={formatNumberWithCommas(newEntry.airtimeAndData)}
+                        onChange={handleAirtimeAndDataChange}
+                        fullWidth
+                        type="text"
+                        InputProps={{
+                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
+                          inputProps: { min: 0, step: 0.01 }
+                        }}
+                      />
+                    </Grid>
+                  </>
+                )}
                 <Grid item xs={12}>
                   <TextField
                     label="Description"
@@ -592,19 +858,7 @@ const LedgerPage = () => {
                     fullWidth
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Amount"
-                    type="number"
-                    value={newEntry.amount}
-                    onChange={(e) => setNewEntry({...newEntry, amount: e.target.value})}
-                    fullWidth
-                    InputProps={{
-                      startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <TextField
                     label="Reference"
                     value={newEntry.reference}
@@ -629,9 +883,9 @@ const LedgerPage = () => {
               <Button 
                 variant="contained" 
                 onClick={handleNewEntry}
-                disabled={!newEntry.description || !newEntry.amount}
+                disabled={creatingEntry || !newEntry.description || (newEntry.type === 'revenue' && !newEntry.bankInterest) || (newEntry.type === 'expenses' && !newEntry.serviceCharge && !newEntry.withdrawCharges && !newEntry.transport && !newEntry.transferFee && !newEntry.annualDebitCardFee && !newEntry.withholdingTax && !newEntry.airtimeAndData)}
               >
-                Add Entry
+                {creatingEntry ? 'Creating...' : 'Add Entry'}
               </Button>
             </DialogActions>
           </Dialog>
@@ -687,6 +941,14 @@ const LedgerPage = () => {
               Delete Entry
             </MenuItem>
           </Menu>
+
+          {/* Snackbar */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={6000}
+            onClose={handleSnackbarClose}
+            message={snackbarMessage}
+          />
         </main>
       </div>
     </div>

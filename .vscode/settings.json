@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
+<<<<<<< HEAD
         "autotable",
         "firestore"
+=======
+        "Firestore"
+>>>>>>> abd54ab0bd0e1e86a02b9fc465e25babb880314e
     ]
 }

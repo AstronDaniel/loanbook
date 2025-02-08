@@ -11,6 +11,7 @@ import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Person as PersonIco
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import DebtorDetailModal from './DebtorsDetailModal';
+import DebtorCard from '../components/DebtorCard';
 
 const db = getFirestore(app);
 
@@ -434,7 +435,7 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
                 variant="outlined"
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            {/* <Grid item xs={12} sm={6} md={4}>
               <StyledDatePicker>
                 <DatePicker
                   selected={selectedDate}
@@ -444,7 +445,7 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
                   placeholderText="Select month"
                 />
               </StyledDatePicker>
-            </Grid>
+            </Grid> */}
             <Grid item xs={12} sm={6} md={4}>
               <Select
                 fullWidth
@@ -465,58 +466,7 @@ const [isSidebarOpen, setIsSidebarOpen] = useState(false);
             {sortedDebtors.length > 0 ? (
               sortedDebtors.map((debtor) => (
                 <Grid item xs={12} sm={6} lg={4} key={debtor.id}>
-                  <Card 
-                    sx={{ 
-                      transition: 'all 0.3s',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: theme.shadows[4],
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ p: isMobile ? 2 : 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant={isMobile ? "subtitle1" : "h6"}>
-                          {debtor.customerName}
-                        </Typography>
-                        <Chip
-                          label={debtor.status}
-                          size="small"
-                          sx={{
-                            bgcolor: getStatusColor(debtor.status).light,
-                            color: getStatusColor(debtor.status).main,
-                            textTransform: 'capitalize'
-                          }}
-                        />
-                      </Box>
-                      
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" color="textSecondary">
-                          Principal Outstanding for {selectedDate.toISOString().slice(0, 7)}
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {getPrincipalOutstandingForMonth(debtor, selectedDate.toISOString().slice(0, 7))?.toLocaleString() || '0'}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          Current Principal Outstanding
-                        </Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                          UGX {debtor.currentOpeningPrincipal?.toLocaleString() || '0'}
-                        </Typography>
-                      </Box>
-                      
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        size={isMobile ? "small" : "medium"}
-                        endIcon={<NavigateNextIcon />}
-                        onClick={() => handleDebtorClick(debtor)}
-                        sx={{ mt: 2 }}
-                      >
-                        View Details
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  <DebtorCard debtor={debtor} selectedDate={selectedDate} handleDebtorClick={handleDebtorClick} />
                 </Grid>
               ))
             ) : (
