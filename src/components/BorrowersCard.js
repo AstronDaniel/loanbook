@@ -1340,7 +1340,8 @@ const BorrowersCard = ({ darkMode }) => {
                   variant="body2" 
                   sx={{ 
                     color: stat.color || '#A8B6BC',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    fontWeight: 'bold' // Increase boldness
                   }}
                 >
                   {stat.label}
