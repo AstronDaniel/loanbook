@@ -29,7 +29,6 @@ const InterestChargeCard = () => {
     totalInterestCharged: 'UGX 0',
     dailyInterestCharged: 'UGX 0',
     totalLoans: '0',
-    averageRate: '0%',
     customersForDate: []
   });
   const [loading, setLoading] = useState(true); // Add loading state
@@ -69,7 +68,6 @@ const InterestChargeCard = () => {
         }, 0);
 
         const totalLoans = filteredDebtors.length;
-        const averageRate = totalLoans > 0 ? (dailyInterestCharged / totalLoans).toFixed(2) + '%' : '0%';
 
         // Map customer details with the interestCharge from monthly records
         const customersForDate = filteredDebtors.map(debtor => {
@@ -79,15 +77,11 @@ const InterestChargeCard = () => {
           });
           if (!monthRecord) return null; // Add check to ensure monthRecord is defined
 
-          const loan = loansData.find(loan => loan.customerName === debtor.customerName);
-          const loanAmount = loan ? `UGX ${loan.amount.toLocaleString()}` : 'Unknown';
-
           return {
             id: debtor.loanId,
             name: debtor.customerName,
             amount: `UGX ${monthRecord.interestCharge.toLocaleString()}`,
-            rate: loan ? loan.interestRate + '%' : 'Unknown',
-            loanAmount: loanAmount
+            outstandingPrincipal: `UGX ${monthRecord.outstandingPrinciple.toLocaleString()}`
           };
         }).filter(customer => customer !== null) // Filter out null values
           .sort((a, b) => {
@@ -105,7 +99,6 @@ const InterestChargeCard = () => {
           totalInterestCharged: `UGX ${overallInterestCharged.toLocaleString()}`,
           dailyInterestCharged: `UGX ${dailyInterestCharged.toLocaleString()}`,
           totalLoans: totalLoans.toString(),
-          averageRate: averageRate,
           customersForDate
         });
       } catch (err) {
@@ -136,12 +129,6 @@ const InterestChargeCard = () => {
               </div>
               <div class="text-sm text-gray-400">Loans</div>
             </div>
-            <div>
-              <div class="text-xl font-bold text-purple-400">
-                ${interestData.averageRate}
-              </div>
-              <div class="text-sm text-gray-400">Avg Rate</div>
-            </div>
           </div>
           <div class="overflow-x-auto">
             <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden text-sm"> <!-- Reduce font size -->
@@ -149,8 +136,7 @@ const InterestChargeCard = () => {
                 <tr>
                   <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Customer</th>
                   <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Interest</th>
-                  <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Rate</th>
-                  <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Loan Amount</th>
+                  <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Outstanding Principal</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
@@ -158,8 +144,7 @@ const InterestChargeCard = () => {
                   <tr class="hover:bg-gray-700 transition-colors">
                     <td class="py-3 px-4 whitespace-nowrap">${customer.name}</td>
                     <td class="py-3 px-4 whitespace-nowrap text-green-400">${customer.amount}</td>
-                    <td class="py-3 px-4 whitespace-nowrap text-blue-400">${customer.rate}</td>
-                    <td class="py-3 px-4 whitespace-nowrap text-gray-400">${customer.loanAmount}</td>
+                    <td class="py-3 px-4 whitespace-nowrap text-gray-400">${customer.outstandingPrincipal}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -226,8 +211,7 @@ const InterestChargeCard = () => {
               <tr>
                 <th>Customer Name</th>
                 <th>Interest</th>
-                <th>Rate</th>
-                <th>Loan Amount</th>
+                <th>Outstanding Principal</th>
               </tr>
             </thead>
             <tbody>
@@ -235,15 +219,13 @@ const InterestChargeCard = () => {
                 <tr>
                   <td>${customer.name}</td>
                   <td>${customer.amount}</td>
-                  <td>${customer.rate}</td>
-                  <td>${customer.loanAmount}</td>
+                  <td>${customer.outstandingPrincipal}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
           <div class="total">
             <p>Total Interest Charged: ${interestData.dailyInterestCharged}</p>
-            <p>Average Rate: ${interestData.averageRate}</p>
           </div>
         </body>
       </html>
@@ -322,7 +304,7 @@ const InterestChargeCard = () => {
                 {interestData.dailyInterestCharged}
               </Typography>
               <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                {interestData.totalLoans} loans @ {interestData.averageRate}
+                {interestData.totalLoans} loans
               </Typography>
             </Box>
           </Box>
