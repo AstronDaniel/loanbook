@@ -36,6 +36,7 @@ const PrincipalAdvancedCard = () => {
     averageLoanSize: 'UGX 0',
     customersForDate: []
   });
+  const [loading, setLoading] = useState(true); // Add loading state
 
   const logDebtorsWithPrincipalAdvance = (debtorsData, selectedMonth) => {
     debtorsData.forEach(debtor => {
@@ -60,10 +61,13 @@ const PrincipalAdvancedCard = () => {
 
   useEffect(() => {
     const fetchPrincipalData = async () => {
+      setLoading(true); // Set loading to true
       try {
         const db = getFirestore(app);
         const debtorsSnapshot = await getDocs(collection(db, 'debtors'));
+        const loansSnapshot = await getDocs(collection(db, 'loans'));
         const debtorsData = debtorsSnapshot.docs.map(doc => doc.data());
+        const loansData = loansSnapshot.docs.map(doc => doc.data());
 
         const overallPrincipalAdvanced = debtorsData.reduce((total, debtor) => {
           return total + (debtor.monthlyRecords || []).reduce((sum, record) => sum + (record.principleAdvance || 0), 0);
@@ -87,21 +91,35 @@ const PrincipalAdvancedCard = () => {
         const totalLoans = filteredDebtors.length;
         const averageLoanSize = totalLoans > 0 ? dailyPrincipalAdvanced / totalLoans : 0;
 
-        // Map customer details with the principleAdvance from monthly records
+        // Map customer details with the principleAdvance from monthly records and loan type from loans data
         const customersForDate = filteredDebtors.map(debtor => {
           const monthRecord = debtor.monthlyRecords.find(record => {
             const paddedMonth = record.month.length === 6 ? record.month.replace(/-(\d)$/, '-0$1') : record.month;
             return paddedMonth === selectedMonth});
           if (!monthRecord) return null; // Add check to ensure monthRecord is defined
+
+          const loan = loansData.find(loan => loan.customerName === debtor.customerName);
+          const loanType = loan ? loan.loanType : 'Unknown';
+
           console.log('Customer month record:', monthRecord); // Debugging log
           return {
             id: debtor.loanId,
             name: debtor.customerName,
             amount: `UGX ${monthRecord.principleAdvance.toLocaleString()}`,
             time: format(new Date(), 'hh:mm a'), // Placeholder time
-            loanType: debtor.loanType
+            loanType: loanType
           };
-        }).filter(customer => customer !== null); // Filter out null values
+        }).filter(customer => customer !== null) // Filter out null values
+          .sort((a, b) => {
+            const nameA = a.name.match(/(\D+)(\d+)/);
+            const nameB = b.name.match(/(\D+)(\d+)/);
+            if (nameA && nameB) {
+              const [_, textA, numA] = nameA;
+              const [__, textB, numB] = nameB;
+              return textA.localeCompare(textB) || parseInt(numA) - parseInt(numB);
+            }
+            return a.name.localeCompare(b.name);
+          }); // Sort by customer name with numbers
 
         setPrincipalData({
           overallPrincipalAdvanced: `UGX ${overallPrincipalAdvanced.toLocaleString()}`,
@@ -113,6 +131,8 @@ const PrincipalAdvancedCard = () => {
         console.log('Principal data:', principalData);
       } catch (err) {
         console.error('Error fetching principal data:', err);
+      } finally {
+        setLoading(false); // Set loading to false
       }
     };
 
@@ -202,7 +222,7 @@ const PrincipalAdvancedCard = () => {
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden">
+            <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden text-sm"> <!-- Reduce font size -->
               <thead class="bg-gray-700">
                 <tr>
                   <th class="py-3 px-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Customer</th>
@@ -257,6 +277,85 @@ const PrincipalAdvancedCard = () => {
         window.printReport = handlePrint;
       }
     });
+  };
+
+  const renderContent = () => {
+    if (loading) return (
+      <div className="bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+        <div className="h-6 bg-gray-600 rounded w-1/2 mb-4"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((_, index) => (
+            <div key={index} className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gray-600 rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-600 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <Grid container spacing={1}>
+        <Grid item xs={12}>
+          <Box sx={{ 
+            bgcolor: 'rgba(33,150,243,0.1)',
+            borderRadius: 2,
+            p: 1.5, // Reduce padding
+            mb: 1.5 // Reduce margin
+          }}>
+            <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
+                {/* // Reduce margin */}
+              Overall Principal Advanced
+            </Typography>
+            <Typography variant="subtitle2" sx={{ color: '#2196f3', fontWeight: 600 }}> 
+                {/* // Use smaller typography variant */}
+              {principalData.overallPrincipalAdvanced}
+            </Typography>
+          </Box>
+        </Grid>
+        <Grid item xs={12}>
+          <Box 
+            onClick={showDailyPrincipalDetails}
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              p: 1.5, // Reduce padding
+              cursor: 'pointer',
+              borderRadius: 2,
+              bgcolor: 'rgba(255,255,255,0.05)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                bgcolor: 'rgba(33,150,243,0.1)',
+                transform: 'translateX(4px)',
+              }
+            }}
+          >
+            <Box>
+              <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
+                {/* // Reduce margin*/}
+                Principal Advanced for 
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#2196f3', fontWeight: 500 }}>
+                {format(selectedDate, 'MMM d, yyyy')}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="subtitle2" sx={{ color: '#2196f3', fontWeight: 600 }}> 
+                {/* // Use smaller typography variant */}
+                {principalData.dailyPrincipalAdvanced}
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
+                {principalData.totalLoans} loans
+              </Typography>
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+    );
   };
 
   return (
@@ -341,64 +440,7 @@ const PrincipalAdvancedCard = () => {
             />
           </LocalizationProvider>
 
-          <Grid container spacing={1}> 
-            {/* // Reduce spacing */}
-            <Grid item xs={12}>
-              <Box sx={{ 
-                bgcolor: 'rgba(33,150,243,0.1)',
-                borderRadius: 2,
-                p: 1.5, // Reduce padding
-                mb: 1.5 // Reduce margin
-              }}>
-                <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
-                    {/* // Reduce margin */}
-                  Overall Principal Advanced
-                </Typography>
-                <Typography variant="subtitle2" sx={{ color: '#2196f3', fontWeight: 600 }}> 
-                    {/* // Use smaller typography variant */}
-                  {principalData.overallPrincipalAdvanced}
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <Box 
-                onClick={showDailyPrincipalDetails}
-                sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  p: 1.5, // Reduce padding
-                  cursor: 'pointer',
-                  borderRadius: 2,
-                  bgcolor: 'rgba(255,255,255,0.05)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    bgcolor: 'rgba(33,150,243,0.1)',
-                    transform: 'translateX(4px)',
-                  }
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
-                    {/* // Reduce margin*/}
-                    Principal Advanced for 
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#2196f3', fontWeight: 500 }}>
-                    {format(selectedDate, 'MMM d, yyyy')}
-                  </Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="subtitle2" sx={{ color: '#2196f3', fontWeight: 600 }}> 
-                    {/* // Use smaller typography variant */}
-                    {principalData.dailyPrincipalAdvanced}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                    {principalData.totalLoans} loans
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-          </Grid>
+          {renderContent()}
         </Box>
       </Collapse>
     </Card>
