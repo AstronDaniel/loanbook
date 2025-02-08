@@ -9,12 +9,13 @@ import {
   FormControl, 
   TextField, 
   Typography, 
-  Grid, 
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { 
   DatePicker, 
@@ -74,6 +75,8 @@ const Reports = () => {
     maxAmount: '',
     transactionType: 'all'
   });
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // Sidebar Toggle
   const toggleSidebar = () => {
@@ -114,9 +117,12 @@ const Reports = () => {
       // Group and transform data for chart
       const groupedData = transformDataForChart(filteredTransactions);
       setReportData(groupedData);
+      setSnackbarMessage('Report generated successfully');
+      setSnackbarOpen(true);
     } catch (error) {
       console.error('Error generating report:', error);
-      // Show error notification
+      setSnackbarMessage('Error generating report');
+      setSnackbarOpen(true);
     } finally {
       setLoading(false);
     }
@@ -332,7 +338,7 @@ const Reports = () => {
                   onClick={generateReport} 
                   disabled={loading}
                 >
-                  {loading ? 'Generating...' : 'Generate Report'}
+                  {loading ? <CircularProgress size={24} /> : 'Generate Report'}
                 </Button>
                 <Button 
                   variant="contained" 
@@ -449,6 +455,17 @@ const Reports = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={6000}
+          onClose={() => setSnackbarOpen(false)}
+        >
+          <Alert onClose={() => setSnackbarOpen(false)} severity="success">
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
       </div>
     </LocalizationProvider>
   );
