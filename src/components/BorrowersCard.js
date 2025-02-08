@@ -56,7 +56,8 @@ const BorrowersCard = ({ darkMode }) => {
           return null;
         }));
 
-        setBadDebtors(badDebtors.filter(debtor => debtor !== null));
+        setBadDebtors(badDebtors.filter(debtor => debtor !== null).sort((a, b) => a.customerName.localeCompare(b.customerName, undefined, { numeric: true })));
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching bad debtors:', err);
@@ -107,7 +108,7 @@ const BorrowersCard = ({ darkMode }) => {
         { label: 'Overdue', value: debtorsData.filter(b => b.status === 'overdue').length, color: '#f44336' },
         { label: 'Bad Debtors', value: badDebtors.length, color: '#d32f2f' },
         { label: 'About to Overdue', value: aboutToOverdue.length, color: '#ff9800' },
-        { label: '0 Balance Debtors', value: debtorsData.filter(b => b.status === 'completed').length, color: '#2196f3' }
+        { label: '0 Balance Debtors', value: debtorsData.filter(b => b.status === 'completed').sort((a, b) => a.customerName.localeCompare(b.customerName, undefined, { numeric: true })).length, color: '#2196f3' }
       ];
 
       setStats(stats);
@@ -152,7 +153,7 @@ const BorrowersCard = ({ darkMode }) => {
 
         const aboutToOverdue = activeBorrowers.filter(borrower => {
           return borrower && borrower.monthsToDueDate <= 2;
-        });
+        }).sort((a, b) => a.customerName.localeCompare(b.customerName, undefined, { numeric: true }));
 
         setAboutToOverdue(aboutToOverdue);
       } catch (err) {
@@ -559,6 +560,686 @@ const BorrowersCard = ({ darkMode }) => {
       });
       return;
     }
+
+    if (stat.label === 'Active Borrowers') {
+      if (!debtors || !Array.isArray(debtors)) {
+        Swal.fire({
+          title: 'No Data Available',
+          text: 'There is no data available for this statistic.',
+          icon: 'info',
+          background: '#2A2F34',
+          color: '#ffffff'
+        });
+        return;
+      }
+
+      const activeBorrowers = debtors.filter(debtor => debtor.status === 'active');
+
+      const tableStyles = `
+        <style>
+          .borrowers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+          }
+          .borrowers-table th, .borrowers-table td {
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            text-align: right;
+          }
+          .borrowers-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #2A2F34;
+            z-index: 1;
+          }
+          .borrowers-table th {
+            background: #374151;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          .borrowers-table tbody tr:nth-child(even) {
+            background: rgba(255,255,255,0.05);
+          }
+          .borrowers-table tbody tr:hover {
+            background: rgba(255,255,255,0.1);
+          }
+          .table-container {
+            max-height: 70vh;
+            overflow-x: auto;
+            overflow-y: auto;
+          }
+          .search-container {
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #2A2F34;
+            padding: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          #searchInput {
+            width: 300px;
+            padding: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+          }
+          #searchInput::placeholder {
+            color: rgba(255,255,255,0.5);
+          }
+        </style>
+      `;
+
+      let tableContent = `
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search by Customer Name">
+        </div>
+        <div class="table-container">
+          <table class="borrowers-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Remaining Principal</th>
+                <th>Remaining Interest</th>
+              </tr>
+            </thead>
+            <tbody id="borrowersTableBody">
+      `;
+
+      activeBorrowers.forEach(debtor => {
+        tableContent += `<tr>
+          <td>${debtor.customerName}</td>
+          <td>${debtor.currentOpeningPrincipal.toLocaleString()}</td>
+          <td>${debtor.currentOpeningInterest.toLocaleString()}</td>
+        </tr>`;
+      });
+
+      tableContent += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      Swal.fire({
+        title: 'Active Borrowers',
+        html: tableStyles + tableContent,
+        background: '#2A2F34',
+        color: '#ffffff',
+        showCloseButton: true,
+        showConfirmButton: false,
+        width: '95%',
+        didOpen: () => {
+          const searchInput = document.getElementById('searchInput');
+          const tableBody = document.getElementById('borrowersTableBody');
+
+          searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const rows = tableBody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+              const customerName = row.cells[0].textContent.toLowerCase();
+              row.style.display = customerName.includes(searchTerm) ? '' : 'none';
+            }
+          });
+        }
+      });
+      return;
+    }
+
+    if (stat.label === 'Overdue') {
+      if (!debtors || !Array.isArray(debtors)) {
+        Swal.fire({
+          title: 'No Data Available',
+          text: 'There is no data available for this statistic.',
+          icon: 'info',
+          background: '#2A2F34',
+          color: '#ffffff'
+        });
+        return;
+      }
+
+      const overdueBorrowers = debtors.filter(debtor => debtor.status === 'overdue');
+
+      const tableStyles = `
+        <style>
+          .borrowers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+          }
+          .borrowers-table th, .borrowers-table td {
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            text-align: right;
+          }
+          .borrowers-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #2A2F34;
+            z-index: 1;
+          }
+          .borrowers-table th {
+            background: #374151;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          .borrowers-table tbody tr:nth-child(even) {
+            background: rgba(255,255,255,0.05);
+          }
+          .borrowers-table tbody tr:hover {
+            background: rgba(255,255,255,0.1);
+          }
+          .table-container {
+            max-height: 70vh;
+            overflow-x: auto;
+            overflow-y: auto;
+          }
+          .search-container {
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #2A2F34;
+            padding: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          #searchInput {
+            width: 300px;
+            padding: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+          }
+          #searchInput::placeholder {
+            color: rgba(255,255,255,0.5);
+          }
+        </style>
+      `;
+
+      let tableContent = `
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search by Customer Name">
+        </div>
+        <div class="table-container">
+          <table class="borrowers-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Remaining Principal</th>
+                <th>Remaining Interest</th>
+              </tr>
+            </thead>
+            <tbody id="borrowersTableBody">
+      `;
+
+      overdueBorrowers.forEach(debtor => {
+        tableContent += `<tr>
+          <td>${debtor.customerName}</td>
+          <td>${debtor.currentOpeningPrincipal.toLocaleString()}</td>
+          <td>${debtor.currentOpeningInterest.toLocaleString()}</td>
+        </tr>`;
+      });
+
+      tableContent += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      Swal.fire({
+        title: 'Overdue Borrowers',
+        html: tableStyles + tableContent,
+        background: '#2A2F34',
+        color: '#ffffff',
+        showCloseButton: true,
+        showConfirmButton: false,
+        width: '95%',
+        didOpen: () => {
+          const searchInput = document.getElementById('searchInput');
+          const tableBody = document.getElementById('borrowersTableBody');
+
+          searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const rows = tableBody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+              const customerName = row.cells[0].textContent.toLowerCase();
+              row.style.display = customerName.includes(searchTerm) ? '' : 'none';
+            }
+          });
+        }
+      });
+      return;
+    }
+
+    if (stat.label === 'Bad Debtors') {
+      if (!debtors || !Array.isArray(debtors)) {
+        Swal.fire({
+          title: 'No Data Available',
+          text: 'There is no data available for this statistic.',
+          icon: 'info',
+          background: '#2A2F34',
+          color: '#ffffff'
+        });
+        return;
+      }
+
+      // Debugging: Log all debtors
+      // console.log('All Debtors:', debtors);
+
+      // const badDebtors = debtors.filter(debtor => {
+      //   const isOverdue = debtor.status === 'overdue';
+      //   const daysOverdue = differenceInDays(new Date(), parseISO(debtor.lastUpdated));
+      //   const isBadDebtor = daysOverdue >= 90;
+        
+      //   // Debugging: Log each debtor's status and days overdue
+      //   console.log(`Debtor: ${debtor.customerName}, Status: ${debtor.status}, Days Overdue: ${daysOverdue}, Is Bad Debtor: ${isBadDebtor}`);
+        
+      //   return isOverdue && isBadDebtor;
+      // });
+
+      // Debugging: Log filtered bad debtors
+      console.log('Bad Debtors:', badDebtors);
+
+      const tableStyles = `
+        <style>
+          .borrowers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+          }
+          .borrowers-table th, .borrowers-table td {
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            text-align: right;
+          }
+          .borrowers-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #2A2F34;
+            z-index: 1;
+          }
+          .borrowers-table th {
+            background: #374151;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          .borrowers-table tbody tr:nth-child(even) {
+            background: rgba(255,255,255,0.05);
+          }
+          .borrowers-table tbody tr:hover {
+            background: rgba(255,255,255,0.1);
+          }
+          .table-container {
+            max-height: 70vh;
+            overflow-x: auto;
+            overflow-y: auto;
+          }
+          .search-container {
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #2A2F34;
+            padding: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          #searchInput {
+            width: 300px;
+            padding: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+          }
+          #searchInput::placeholder {
+            color: rgba(255,255,255,0.5);
+          }
+        </style>
+      `;
+
+      let tableContent = `
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search by Customer Name">
+        </div>
+        <div class="table-container">
+          <table class="borrowers-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Remaining Principal</th>
+                <th>Remaining Interest</th>
+              </tr>
+            </thead>
+            <tbody id="borrowersTableBody">
+      `;
+
+      badDebtors.forEach(debtor => {
+        tableContent += `<tr>
+          <td>${debtor.customerName}</td>
+          <td>${debtor.currentOpeningPrincipal.toLocaleString()}</td>
+          <td>${debtor.currentOpeningInterest.toLocaleString()}</td>
+        </tr>`;
+      });
+
+      tableContent += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      Swal.fire({
+        title: 'Bad Debtors',
+        html: tableStyles + tableContent,
+        background: '#2A2F34',
+        color: '#ffffff',
+        showCloseButton: true,
+        showConfirmButton: false,
+        width: '95%',
+        didOpen: () => {
+          const searchInput = document.getElementById('searchInput');
+          const tableBody = document.getElementById('borrowersTableBody');
+
+          searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const rows = tableBody.getElementsByTagName('tr');
+
+            for (let row of rows) {
+              const customerName = row.cells[0].textContent.toLowerCase();
+              row.style.display = customerName.includes(searchTerm) ? '' : 'none';
+            }
+          });
+        }
+      });
+      return;
+    }
+
+    if (stat.label === 'About to Overdue') {
+      if (!aboutToOverdue || !Array.isArray(aboutToOverdue)) {
+        Swal.fire({
+          title: 'No Data Available',
+          text: 'There is no data available for this statistic.',
+          icon: 'info',
+          background: '#2A2F34',
+          color: '#ffffff'
+        });
+        return;
+      }
+
+      const tableStyles = `
+        <style>
+          .borrowers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+          }
+          .borrowers-table th, .borrowers-table td {
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            text-align: right;
+          }
+          .borrowers-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: #2A2F34;
+            z-index: 1;
+          }
+          .borrowers-table th {
+            background: #374151;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          .borrowers-table tbody tr:nth-child(even) {
+            background: rgba(255,255,255,0.05);
+          }
+          .borrowers-table tbody tr:hover {
+            background: rgba(255,255,255,0.1);
+          }
+          .table-container {
+            max-height: 70vh;
+            overflow-x: auto;
+            overflow-y: auto;
+          }
+          .search-container {
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #2A2F34;
+            padding: 1rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          #searchInput {
+            width: 300px;
+            padding: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+          }
+          #searchInput::placeholder {
+            color: rgba(255,255,255,0.5);
+          }
+        </style>
+      `;
+
+      let tableContent = `
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search by Customer Name">
+        </div>
+        <div class="table-container">
+          <table class="borrowers-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Remaining Principal</th>
+                <th>Remaining Interest</th>
+                <th>Time to Overdue</th>
+              </tr>
+            </thead>
+            <tbody id="borrowersTableBody">
+      `;
+
+      aboutToOverdue.forEach(debtor => {
+        tableContent += `<tr>
+          <td>${debtor.customerName}</td>
+          <td>${debtor.currentOpeningPrincipal.toLocaleString()}</td>
+          <td>${debtor.currentOpeningInterest.toLocaleString()}</td>
+          <td>${debtor.monthsToDueDate > 0 ? `${debtor.monthsToDueDate} months` : `${debtor.remainingDays} days`}</td>
+        </tr>`;
+      });
+
+      tableContent += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    Swal.fire({
+      title: 'About to Overdue Borrowers',
+      html: tableStyles + tableContent,
+      background: '#2A2F34',
+      color: '#ffffff',
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: '95%',
+      didOpen: () => {
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('borrowersTableBody');
+
+        searchInput.addEventListener('input', () => {
+          const searchTerm = searchInput.value.toLowerCase();
+          const rows = tableBody.getElementsByTagName('tr');
+
+          for (let row of rows) {
+            const customerName = row.cells[0].textContent.toLowerCase();
+            row.style.display = customerName.includes(searchTerm) ? '' : 'none';
+          }
+        });
+      }
+    });
+    return;
+  }
+
+  if (stat.label === '0 Balance Debtors') {
+    if (!debtors || !Array.isArray(debtors)) {
+      Swal.fire({
+        title: 'No Data Available',
+        text: 'There is no data available for this statistic.',
+        icon: 'info',
+        background: '#2A2F34',
+        color: '#ffffff'
+      });
+      return;
+    }
+
+    const zeroBalanceDebtors = debtors.filter(debtor => debtor.status === 'completed');
+
+    const tableStyles = `
+      <style>
+        .borrowers-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.875rem;
+        }
+        .borrowers-table th, .borrowers-table td {
+          padding: 8px;
+          border: 1px solid rgba(255,255,255,0.1);
+          white-space: nowrap;
+          text-align: right;
+        }
+        .borrowers-table td:first-child {
+          text-align: left;
+          position: sticky;
+          left: 0;
+          background: #2A2F34;
+          z-index: 1;
+        }
+        .borrowers-table th {
+          background: #374151;
+          text-align: center;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .borrowers-table tbody tr:nth-child(even) {
+          background: rgba(255,255,255,0.05);
+        }
+        .borrowers-table tbody tr:hover {
+          background: rgba(255,255,255,0.1);
+        }
+        .table-container {
+          max-height: 70vh;
+          overflow-x: auto;
+          overflow-y: auto;
+        }
+        .search-container {
+          margin-bottom: 1rem;
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          background: #2A2F34;
+          padding: 1rem 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        #searchInput {
+          width: 300px;
+          padding: 0.5rem;
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 4px;
+          background: rgba(255,255,255,0.1);
+          color: white;
+        }
+        #searchInput::placeholder {
+          color: rgba(255,255,255,0.5);
+        }
+      </style>
+    `;
+
+    let tableContent = `
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search by Customer Name">
+      </div>
+      <div class="table-container">
+        <table class="borrowers-table">
+          <thead>
+            <tr>
+              <th>Customer Name</th>
+              <th>Remaining Principal</th>
+              <th>Remaining Interest</th>
+            </tr>
+          </thead>
+          <tbody id="borrowersTableBody">
+    `;
+
+    zeroBalanceDebtors.forEach(debtor => {
+      tableContent += `<tr>
+        <td>${debtor.customerName}</td>
+        <td>${debtor.currentOpeningPrincipal.toLocaleString()}</td>
+        <td>${debtor.currentOpeningInterest.toLocaleString()}</td>
+      </tr>`;
+    });
+
+    tableContent += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    Swal.fire({
+      title: '0 Balance Debtors',
+      html: tableStyles + tableContent,
+      background: '#2A2F34',
+      color: '#ffffff',
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: '95%',
+      didOpen: () => {
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('borrowersTableBody');
+
+        searchInput.addEventListener('input', () => {
+          const searchTerm = searchInput.value.toLowerCase();
+          const rows = tableBody.getElementsByTagName('tr');
+
+          for (let row of rows) {
+            const customerName = row.cells[0].textContent.toLowerCase();
+            row.style.display = customerName.includes(searchTerm) ? '' : 'none';
+          }
+        });
+      }
+    });
+    return;
+  }
 
     if (!stat.summary) {
       Swal.fire({
