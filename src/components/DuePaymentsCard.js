@@ -1,67 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Card, 
   IconButton, 
   Typography, 
-  Collapse
+  Collapse,
+  Grid
 } from '@mui/material';
 import { 
   KeyboardArrowDown as ArrowDownIcon,
   KeyboardArrowUp as ArrowUpIcon,
   Close as CloseIcon,
   Warning as WarningIcon,
-  AccessTime as ClockIcon
+  AccessTime as ClockIcon,
+  Print as PrintIcon // Import PrintIcon
 } from '@mui/icons-material';
 import Swal from 'sweetalert2';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../firebase';
 
 const DuePaymentsCard = () => {
   const [isExpanded, setIsExpanded] = useState(true);
-  
-  // Sample data - replace with actual data
-  const duePaymentsData = {
-    totalDueToday: 'UGX 2.45M',
-    dueAccounts: '28',
-    overdueTotalAmount: 'UGX 890K',
-    overdueAccounts: '12',
-    customers: [
-      { 
-        id: 1, 
-        name: 'John Doe', 
-        amount: 'UGX 150,000', 
-        dueDate: '2025-02-08',
-        status: 'due',
-        phone: '+256 777 123456',
-        loanId: 'L2025001'
-      },
-      { 
-        id: 2, 
-        name: 'Jane Smith', 
-        amount: 'UGX 200,000', 
-        dueDate: '2025-02-07',
-        status: 'overdue',
-        phone: '+256 777 234567',
-        loanId: 'L2025002',
-        daysOverdue: 1
+  const [duePaymentsData, setDuePaymentsData] = useState({
+    totalDueToday: 'UGX 0',
+    dueAccounts: '0',
+    overdueTotalAmount: 'UGX 0',
+    overdueAccounts: '0',
+    customers: []
+  });
+  const [loading, setLoading] = useState(true); // Add loading state
+
+  useEffect(() => {
+    const fetchDuePaymentsData = async () => {
+      setLoading(true); // Set loading to true
+      try {
+        const db = getFirestore(app);
+        const debtorsSnapshot = await getDocs(collection(db, 'debtors'));
+        const debtorsData = debtorsSnapshot.docs.map(doc => doc.data());
+
+        console.log('Debtors Data:', debtorsData); // Debugging log
+
+        const today = new Date().toISOString().split('T')[0];
+
+        const overdue = debtorsData.filter(debtor => debtor.status === 'overdue');
+
+        console.log('Overdue Debtors:', overdue); // Debugging log
+
+        const overdueTotalAmount = overdue.reduce((total, debtor) => total + debtor.currentOpeningPrincipal, 0);
+
+        setDuePaymentsData({
+          totalDueToday: `UGX 0`,
+          dueAccounts: '0',
+          overdueTotalAmount: `UGX ${overdueTotalAmount.toLocaleString()}`,
+          overdueAccounts: overdue.length.toString(),
+          customers: overdue.map(debtor => ({
+            id: debtor.loanId,
+            name: debtor.customerName,
+            amount: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
+            outstandingPrincipal: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
+            outstandingInterest: `UGX ${debtor.currentOpeningInterest.toLocaleString()}`,
+            dueDate: debtor.lastUpdated.split('T')[0],
+            status: 'overdue',
+            phone: debtor.phone,
+            loanId: debtor.loanId,
+            daysOverdue: Math.floor((new Date(today) - new Date(debtor.lastUpdated)) / (1000 * 60 * 60 * 24))
+          }))
+        });
+
+        console.log('Due Payments Data:', duePaymentsData); // Debugging log
+      } catch (err) {
+        console.error('Error fetching due payments data:', err);
+      } finally {
+        setLoading(false); // Set loading to false
       }
-    ]
-  };
+    };
+
+    fetchDuePaymentsData();
+  }, []);
 
   const showDuePaymentsDetails = () => {
     Swal.fire({
-      title: 'Due Payments Overview',
+      title: 'Overdue Payments Overview',
       html: `
-        <div class="text-left">
+        <div id="due-payments-details" class="text-left">
           <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="bg-gray-700 p-4 rounded-lg">
-              <div class="text-sm text-gray-400 mb-1">Due Today</div>
-              <div class="text-xl font-bold text-yellow-400">
-                ${duePaymentsData.totalDueToday}
-              </div>
-              <div class="text-sm text-gray-400">
-                ${duePaymentsData.dueAccounts} accounts
-              </div>
-            </div>
             <div class="bg-gray-700 p-4 rounded-lg">
               <div class="text-sm text-gray-400 mb-1">Overdue</div>
               <div class="text-xl font-bold text-red-400">
@@ -73,44 +95,56 @@ const DuePaymentsCard = () => {
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden">
+            <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden text-xs"> <!-- Reduce font size -->
               <thead class="bg-gray-700">
                 <tr>
                   <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Customer</th>
-                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Amount</th>
-                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
-                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Contact</th>
+                  <!-- Removed Amount column -->
+                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Outstanding Principal</th>
+                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Outstanding Interest</th>
+                  <th class="py-2 px-3 text-left text-xs font-medium text-gray-300 uppercase">Due Date</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-700">
-                ${duePaymentsData.customers.map(customer => `
+                ${duePaymentsData.customers.sort((a, b) => {
+                  const nameA = a.name.match(/(\D+)(\d+)/);
+                  const nameB = b.name.match(/(\D+)(\d+)/);
+                  if (nameA && nameB) {
+                    const [_, textA, numA] = nameA;
+                    const [__, textB, numB] = nameB;
+                    return textA.localeCompare(textB) || parseInt(numA) - parseInt(numB);
+                  }
+                  return a.name.localeCompare(b.name);
+                }).map(customer => `
                   <tr class="hover:bg-gray-700 transition-colors">
                     <td class="py-2 px-3">
                       <div class="text-sm">${customer.name}</div>
-                      <div class="text-xs text-gray-400">${customer.loanId}</div>
+                    </td>
+                    <!-- Removed Amount column -->
+                    <td class="py-2 px-3 text-red-400">
+                      ${customer.outstandingPrincipal}
+                    </td>
+                    <td class="py-2 px-3 text-red-400">
+                      ${customer.outstandingInterest}
                     </td>
                     <td class="py-2 px-3">
-                      <div class="text-sm ${customer.status === 'overdue' ? 'text-red-400' : 'text-yellow-400'}">
-                        ${customer.amount}
-                      </div>
-                      <div class="text-xs text-gray-400">Due: ${new Date(customer.dueDate).toLocaleDateString()}</div>
-                    </td>
-                    <td class="py-2 px-3">
-                      <span class="px-2 py-1 text-xs rounded-full ${
-                        customer.status === 'overdue' 
-                          ? 'bg-red-900 text-red-300' 
-                          : 'bg-yellow-900 text-yellow-300'
-                      }">
-                        ${customer.status === 'overdue' ? `${customer.daysOverdue} days overdue` : 'Due today'}
-                      </span>
-                    </td>
-                    <td class="py-2 px-3">
-                      <div class="text-sm">${customer.phone}</div>
+                      <div class="text-sm">${new Date(customer.dueDate).toLocaleDateString()}</div>
                     </td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button 
+              class="print-button bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              onclick="document.querySelector('.swal2-close').click(); setTimeout(() => window.printReport(), 100);"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+              </svg>
+              Print Report
+            </button>
           </div>
         </div>
       `,
@@ -124,8 +158,152 @@ const DuePaymentsCard = () => {
       color: '#ffffff',
       showCloseButton: true,
       showConfirmButton: false,
-      width: '42rem'
+      width: '50rem', // Increase width
+      didOpen: () => {
+        window.printReport = handlePrint;
+      }
     });
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    const formattedDate = new Date().toLocaleDateString();
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Overdue Payments Report - ${formattedDate}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background-color: #2A2F34; color: white; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .header { margin-bottom: 20px; border-bottom: 2px solid #2A2F34; padding-bottom: 10px; }
+            .total { margin-top: 20px; font-weight: bold; background: #f5f5f5; padding: 15px; }
+            .subtitle { color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Overdue Payments Report</h2>
+            <div class="subtitle">Date: ${formattedDate}</div>
+            <div class="subtitle">Total Overdue Amount: ${duePaymentsData.overdueTotalAmount}</div>
+            <div class="subtitle">Number of Overdue Accounts: ${duePaymentsData.overdueAccounts}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Outstanding Principal</th>
+                <th>Outstanding Interest</th>
+                <th>Due Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${duePaymentsData.customers.sort((a, b) => {
+                const nameA = a.name.match(/(\D+)(\d+)/);
+                const nameB = b.name.match(/(\D+)(\d+)/);
+                if (nameA && nameB) {
+                  const [_, textA, numA] = nameA;
+                  const [__, textB, numB] = nameB;
+                  return textA.localeCompare(textB) || parseInt(numA) - parseInt(numB);
+                }
+                return a.name.localeCompare(b.name);
+              }).map(customer => `
+                <tr>
+                  <td>${customer.name}</td>
+                  <td>${customer.outstandingPrincipal}</td>
+                  <td>${customer.outstandingInterest}</td>
+                  <td>${new Date(customer.dueDate).toLocaleDateString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div class="total">
+            <p>Total Overdue Amount: ${duePaymentsData.overdueTotalAmount}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const renderContent = () => {
+    if (loading) return (
+      <div className="bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+        <div className="h-6 bg-gray-600 rounded w-1/2 mb-4"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((_, index) => (
+            <div key={index} className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gray-600 rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-600 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <Grid container spacing={1}>
+        <Grid item xs={12}>
+          <Box sx={{ 
+            bgcolor: 'rgba(255,152,0,0.1)',
+            borderRadius: 2,
+            p: 1.5, // Reduce padding
+            mb: 1.5 // Reduce margin
+          }}>
+            <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
+                {/* // Reduce margin */}
+              Total Due Today
+            </Typography>
+            <Typography variant="subtitle2" sx={{ color: '#ff9800', fontWeight: 600 }}> 
+                {/* // Use smaller typography variant */}
+              {duePaymentsData.totalDueToday}
+            </Typography>
+          </Box>
+        </Grid>
+        <Grid item xs={12}>
+          <Box 
+            onClick={showDuePaymentsDetails}
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              p: 1.5, // Reduce padding
+              cursor: 'pointer',
+              borderRadius: 2,
+              bgcolor: 'rgba(255,255,255,0.05)',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                bgcolor: 'rgba(255,152,0,0.1)',
+                transform: 'translateX(4px)',
+              }
+            }}
+          >
+            <Box>
+              <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
+                {/* // Reduce margin*/}
+                Overdue Amount
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#f44336', fontWeight: 500 }}>
+                {duePaymentsData.overdueTotalAmount}
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="subtitle2" sx={{ color: '#f44336', fontWeight: 600 }}> 
+                {/* // Use smaller typography variant */}
+                {duePaymentsData.overdueAccounts} accounts
+              </Typography>
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+    );
   };
 
   return (
@@ -174,64 +352,8 @@ const DuePaymentsCard = () => {
       </Box>
 
       <Collapse in={isExpanded}>
-        <Box 
-          sx={{ 
-            p: 1.5,
-            cursor: 'pointer',
-            '&:hover': {
-              bgcolor: 'rgba(255,152,0,0.05)'
-            }
-          }}
-          onClick={showDuePaymentsDetails}
-        >
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            mb: 2,
-            p: 1.5,
-            bgcolor: 'rgba(255,152,0,0.1)',
-            borderRadius: 1
-          }}>
-            <Box>
-              <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                Due Today
-              </Typography>
-              <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
-                {duePaymentsData.totalDueToday}
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                {duePaymentsData.dueAccounts} accounts
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                Overdue
-              </Typography>
-              <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
-                {duePaymentsData.overdueTotalAmount}
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#A8B6BC' }}>
-                {duePaymentsData.overdueAccounts} accounts
-              </Typography>
-            </Box>
-          </Box>
-
-          {duePaymentsData.overdueAccounts > 0 && (
-            <Box sx={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 1,
-              color: '#f44336',
-              bgcolor: 'rgba(244,67,54,0.1)',
-              borderRadius: 1,
-              p: 1
-            }}>
-              <WarningIcon fontSize="small" />
-              <Typography variant="caption">
-                {duePaymentsData.overdueAccounts} accounts require immediate attention
-              </Typography>
-            </Box>
-          )}
+        <Box sx={{ p: 1.5 }}>
+          {renderContent()}
         </Box>
       </Collapse>
     </Card>
