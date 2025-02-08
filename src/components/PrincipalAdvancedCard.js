@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Card, 
@@ -23,25 +23,101 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import Swal from 'sweetalert2';
 import { format } from 'date-fns';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../firebase';
 
 const PrincipalAdvancedCard = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
-  // Sample data - replace with actual data
-  const principalData = {
-    overallPrincipalAdvanced: 'UGX 789.5M',
-    dailyPrincipalAdvanced: 'UGX 2.5M',
-    totalLoans: '45',
-    averageLoanSize: 'UGX 55.5K',
-    customersForDate: [
-      { id: 1, name: 'John Doe', amount: 'UGX 250,000', time: '09:30 AM', loanType: 'Business' },
-      { id: 2, name: 'Jane Smith', amount: 'UGX 180,000', time: '10:15 AM', loanType: 'Personal' },
-      { id: 3, name: 'Mike Johnson', amount: 'UGX 420,000', time: '11:45 AM', loanType: 'Business' },
-      { id: 4, name: 'Sarah Williams', amount: 'UGX 150,000', time: '02:30 PM', loanType: 'Personal' },
-      { id: 5, name: 'Robert Brown', amount: 'UGX 340,000', time: '03:45 PM', loanType: 'Business' }
-    ]
+  const [principalData, setPrincipalData] = useState({
+    overallPrincipalAdvanced: 'UGX 0',
+    dailyPrincipalAdvanced: 'UGX 0',
+    totalLoans: '0',
+    averageLoanSize: 'UGX 0',
+    customersForDate: []
+  });
+
+  const logDebtorsWithPrincipalAdvance = (debtorsData, selectedMonth) => {
+    debtorsData.forEach(debtor => {
+      // console.log('Debtor:', debtor);
+      debtor.monthlyRecords?.forEach(record => {
+        const paddedMonth = record.month.length === 6 ? record.month.replace(/-(\d)$/, '-0$1') : record.month;
+        // console.log('Record month:', paddedMonth, 'Selected month:', selectedMonth);
+      });
+    });
+
+    const debtorsWithAdvance = debtorsData.filter(debtor => {
+      const monthRecord = debtor.monthlyRecords?.find(record => {
+        const paddedMonth = record.month.length === 6 ? record.month.replace(/-(\d)$/, '-0$1') : record.month;
+        return paddedMonth === selectedMonth && record.principleAdvance > 0;
+      });
+      return monthRecord !== undefined;
+    });
+
+    // console.log('Debtors with principal advance > 0 for the month:', debtorsWithAdvance);
+    return debtorsWithAdvance;
   };
+
+  useEffect(() => {
+    const fetchPrincipalData = async () => {
+      try {
+        const db = getFirestore(app);
+        const debtorsSnapshot = await getDocs(collection(db, 'debtors'));
+        const debtorsData = debtorsSnapshot.docs.map(doc => doc.data());
+
+        const overallPrincipalAdvanced = debtorsData.reduce((total, debtor) => {
+          return total + (debtor.monthlyRecords || []).reduce((sum, record) => sum + (record.principleAdvance || 0), 0);
+        }, 0);
+
+        const selectedMonth = format(selectedDate, 'yyyy-MM');
+
+        // Get debtors with principal advance > 0
+        const filteredDebtors = logDebtorsWithPrincipalAdvance(debtorsData, selectedMonth);
+        console.log('Filtered debtors:', filteredDebtors);
+
+        // Calculate daily principal advanced from the principleAdvance values
+        const dailyPrincipalAdvanced = filteredDebtors.reduce((total, debtor) => {
+          const monthRecord = debtor.monthlyRecords.find(record => {
+            const paddedMonth = record.month.length === 6 ? record.month.replace(/-(\d)$/, '-0$1') : record.month;
+            return paddedMonth === selectedMonth} );
+          console.log('Month record:', monthRecord); // Debugging log
+          return total + (monthRecord?.principleAdvance || 0);
+        }, 0);
+
+        const totalLoans = filteredDebtors.length;
+        const averageLoanSize = totalLoans > 0 ? dailyPrincipalAdvanced / totalLoans : 0;
+
+        // Map customer details with the principleAdvance from monthly records
+        const customersForDate = filteredDebtors.map(debtor => {
+          const monthRecord = debtor.monthlyRecords.find(record => {
+            const paddedMonth = record.month.length === 6 ? record.month.replace(/-(\d)$/, '-0$1') : record.month;
+            return paddedMonth === selectedMonth});
+          if (!monthRecord) return null; // Add check to ensure monthRecord is defined
+          console.log('Customer month record:', monthRecord); // Debugging log
+          return {
+            id: debtor.loanId,
+            name: debtor.customerName,
+            amount: `UGX ${monthRecord.principleAdvance.toLocaleString()}`,
+            time: format(new Date(), 'hh:mm a'), // Placeholder time
+            loanType: debtor.loanType
+          };
+        }).filter(customer => customer !== null); // Filter out null values
+
+        setPrincipalData({
+          overallPrincipalAdvanced: `UGX ${overallPrincipalAdvanced.toLocaleString()}`,
+          dailyPrincipalAdvanced: `UGX ${dailyPrincipalAdvanced.toLocaleString()}`,
+          totalLoans: totalLoans.toString(),
+          averageLoanSize: `UGX ${averageLoanSize.toLocaleString()}`,
+          customersForDate
+        });
+        console.log('Principal data:', principalData);
+      } catch (err) {
+        console.error('Error fetching principal data:', err);
+      }
+    };
+
+    fetchPrincipalData();
+  }, [selectedDate]);
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
