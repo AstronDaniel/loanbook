@@ -128,7 +128,7 @@ const InterestChargeCard = () => {
               <div class="text-2xl font-bold text-green-400">
                 ${interestData.dailyInterestCharged}
               </div>
-              <div class="text-sm text-gray-400">Total Interest</div>
+              <div class="text-sm text-gray-400">Total Interest Charged</div>
             </div>
             <div>
               <div class="text-xl font-bold text-blue-400">
@@ -218,7 +218,7 @@ const InterestChargeCard = () => {
           <div class="header">
             <h2>Interest Charges Report</h2>
             <div class="subtitle">Date: ${formattedDate}</div>
-            <div class="subtitle">Total Interest: ${interestData.dailyInterestCharged}</div>
+            <div class="subtitle">Total Interest Charged: ${interestData.dailyInterestCharged}</div>
             <div class="subtitle">Number of Loans: ${interestData.totalLoans}</div>
           </div>
           <table>
@@ -308,11 +308,11 @@ const InterestChargeCard = () => {
             }}
           >
             <Box>
-              <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5 }}> 
+              <Typography variant="body2" sx={{ color: '#A8B6BC', mb: 0.5,fontSize: 11 }}> 
                 {/* // Reduce margin*/}
-                Total Interest for 
+                Interest Charged for 
               </Typography>
-              <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 500 }}>
+              <Typography variant="body2" sx={{ color: '#4caf50', fontWeight: 500,fontSize: 11 }}>
                 {format(selectedDate, 'MMM d, yyyy')}
               </Typography>
             </Box>
