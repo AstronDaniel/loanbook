@@ -14,6 +14,10 @@ import {
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { app } from '../firebase';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+
+const MySwal = withReactContent(Swal);
 
 const RecentTransaction = () => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -34,6 +38,97 @@ const RecentTransaction = () => {
 
     fetchTransactions();
   }, []);
+
+  const getTransactionDescription = (transaction) => {
+    switch (transaction.type) {
+      case 'add':
+        return `Added a new entry: ${transaction.content.description}`;
+      case 'delete':
+        return `Deleted an entry: ${transaction.content.description}`;
+      case 'update':
+        return `Updated an entry: ${transaction.content.description}`;
+      default:
+        return `Performed a transaction: ${transaction.content.description}`;
+    }
+  };
+
+  const handleTransactionClick = (transaction) => {
+    const highlightStyle = 'color: #70B6F6; font-weight: bold;';
+    const normalStyle = 'color: #A8B6BC;';
+
+    MySwal.fire({
+      title: `<div class="text-xl font-bold text-white">Transaction Details</div>`,
+      html: `
+        <div class="bg-gray-800 rounded-lg p-4 text-sm">
+          <!-- Main Info -->
+          <div class="mb-3 pb-3 border-b border-gray-700">
+            <div class="flex justify-between mb-2">
+              <span class="text-gray-400">Reference:</span>
+              <span class="text-white font-medium">${transaction.content.reference}</span>
+            </div>
+            <div class="flex justify-between mb-2">
+              <span class="text-gray-400">User:</span>
+              <span class="text-white">${transaction.user}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">Status:</span>
+              <span class="text-green-400">${transaction.content.status}</span>
+            </div>
+          </div>
+
+          <!-- Transaction Details -->
+          <div class="space-y-2">
+            ${[
+              { label: 'Bank Interest', value: transaction.content.bankInterest },
+              { label: 'Service Charge', value: transaction.content.serviceCharge },
+              { label: 'Withdraw Charges', value: transaction.content.withdrawCharges },
+              { label: 'Transport', value: transaction.content.transport },
+              { label: 'Transfer Fee', value: transaction.content.transferFee },
+              { label: 'Annual Card Fee', value: transaction.content.annualDebitCardFee },
+              { label: 'Withholding Tax', value: transaction.content.withholdingTax },
+              { label: 'Airtime & Data', value: transaction.content.airtimeAndData }
+            ].map(({ label, value }) => value !== 0 ? `
+              <div class="flex justify-between">
+                <span class="text-gray-400">${label}:</span>
+                <span class="text-blue-400">UGX ${value.toLocaleString()}</span>
+              </div>
+            ` : '').join('')}
+          </div>
+
+          <!-- Description -->
+          <div class="mt-3 pt-3 border-t border-gray-700">
+            <span class="text-gray-400">Description:</span>
+            <p class="text-white mt-1">${transaction.content.description}</p>
+          </div>
+
+          <!-- Notes if any -->
+          ${transaction.content.notes ? `
+            <div class="mt-3 pt-3 border-t border-gray-700">
+              <span class="text-gray-400">Notes:</span>
+              <p class="text-white mt-1">${transaction.content.notes}</p>
+            </div>
+          ` : ''}
+
+          <!-- Transaction Type and Timestamp -->
+          <div class="mt-3 pt-3 border-t border-gray-700">
+            <span class="text-gray-400">Transaction Type:</span>
+            <p class="text-white mt-1">${transaction.type}</p>
+            <span class="text-gray-400">Timestamp:</span>
+            <p class="text-white mt-1">${transaction.timestamp}</p>
+          </div>
+        </div>
+      `,
+      background: '#1f2937',
+      showCloseButton: true,
+      showConfirmButton: false,
+      width: '400px',
+      customClass: {
+        popup: 'rounded-lg',
+        closeButton: 'text-gray-400 hover:text-white',
+        htmlContainer: 'p-0'
+      }
+    });
+  };
 
   return (
     <Card sx={{ 
@@ -99,11 +194,13 @@ const RecentTransaction = () => {
                 p: 2,
                 borderBottom: '1px solid rgba(255,255,255,0.07)',
                 '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.03)'
+                  bgcolor: 'rgba(255,255,255,0.03)',
+                  cursor: 'pointer'
                 },
                 borderRadius: '4px',
                 mb: 1
               }}
+              onClick={() => handleTransactionClick(transaction)}
             >
               <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                 <Typography 
@@ -132,7 +229,7 @@ const RecentTransaction = () => {
                     mb: 1
                   }}
                 >
-                  {transaction.type} - {transaction.content.description}
+                  {getTransactionDescription(transaction)}
                 </Typography>
               </Box>
               <Typography 
