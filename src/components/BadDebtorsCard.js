@@ -6,7 +6,9 @@ import {
   where, 
   getDocs, 
   doc, 
-  getDoc 
+  getDoc, 
+  updateDoc, 
+  addDoc 
 } from 'firebase/firestore';
 import { app } from '../firebase';
 import { 
@@ -17,8 +19,9 @@ import {
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format } from 'date-fns';
 import DebtorManagementModal from './DebtorManagementModal';
+import { getAuth } from 'firebase/auth';
 
 const MySwal = withReactContent(Swal);
 
@@ -113,6 +116,65 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
     }
     setSelectedDebtor(debtor);
     setIsModalOpen(true);
+  };
+
+  const handleExtend = async ({ dueDate, notes }) => {
+    try {
+      console.log('Extending due date for debtor:', selectedDebtor);
+      const db = getFirestore(app);
+      const debtorRef = doc(db, 'debtors', selectedDebtor.id);
+      
+      // Update debtor's due date
+      await updateDoc(debtorRef, { 
+        dueDate: dueDate,
+        status: 'extended'
+      });
+
+      // Log communication history
+      await addDoc(collection(db, 'communicationLogs'), {
+        debtorId: selectedDebtor.id,
+        customerName: selectedDebtor.customerName,
+        actionType: 'due_date_extension',
+        notes: notes,
+        extendedDate: dueDate,
+        timestamp: new Date()
+      });
+
+      // Log the transaction
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const transactionLog = {
+        user: user ? user.email : 'anonymous',
+        timestamp: new Date().toISOString(),
+        date: format(new Date(), 'yyyy-MM-dd'),
+        time: new Date().toLocaleTimeString(),
+        type: 'extend',
+        content: {
+          reference: Math.random().toString(36).substring(2, 15),
+          status: 'extended',
+          description: `Extended due date for ${selectedDebtor.customerName} to ${dueDate}`,
+          notes: notes
+        }
+      };
+      await addDoc(collection(db, 'transactionLogs'), transactionLog);
+
+      console.log('Due date extended and communication log created for debtor:', selectedDebtor);
+      await MySwal.fire({
+        title: 'Extension Processed',
+        html: `
+          <div class="text-left">
+            <p>Due date for <strong>${selectedDebtor.customerName}</strong> extended to ${dueDate}</p>
+            <p class="text-sm text-gray-600 mt-2">Communication log created successfully</p>
+          </div>
+        `,
+        icon: 'success'
+      });
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Error updating debtor:', err);
+      MySwal.fire('Error', 'Failed to process extension', 'error');
+    }
   };
 
   const renderContent = () => {
@@ -280,7 +342,7 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
       {isModalOpen && selectedDebtor && (
         <DebtorManagementModal 
           debtor={selectedDebtor} 
-          onExtend={() => setIsModalOpen(false)} 
+          onExtend={handleExtend} 
           onClose={() => setIsModalOpen(false)} 
         />
       )}

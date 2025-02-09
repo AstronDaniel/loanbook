@@ -22,9 +22,11 @@ const MySwal = withReactContent(Swal);
 const RecentTransaction = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true); // Add loading state
 
   useEffect(() => {
     const fetchTransactions = async () => {
+      setLoading(true); // Set loading to true
       try {
         const db = getFirestore(app);
         const logsSnapshot = await getDocs(collection(db, 'transactionLogs'));
@@ -33,6 +35,8 @@ const RecentTransaction = () => {
         setTransactions(logsData);
       } catch (err) {
         console.error('Error fetching transaction logs:', err);
+      } finally {
+        setLoading(false); // Set loading to false
       }
     };
 
@@ -130,6 +134,106 @@ const RecentTransaction = () => {
     });
   };
 
+  const renderContent = () => {
+    if (loading) return (
+      <div className="bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+        <div className="h-6 bg-gray-600 rounded w-1/2 mb-4"></div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((_, index) => (
+            <div key={index} className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gray-600 rounded-full"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-gray-600 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-600 rounded w-1/2"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <Box sx={{ 
+        maxHeight: '500px', 
+        overflow: 'auto', 
+        p: 2,
+        '&::-webkit-scrollbar': {
+          width: '8px',
+        },
+        '&::-webkit-scrollbar-track': {
+          background: '#2A2F34',
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: '#6c757d',
+          borderRadius: '4px',
+        },
+        '&::-webkit-scrollbar-thumb:hover': {
+          background: '#555',
+        },
+        fontFamily: 'Poppins !important',
+      }}>
+        {transactions.map((transaction, index) => (
+          <Box
+            key={index}
+            sx={{
+              p: 2,
+              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.03)',
+                cursor: 'pointer'
+              },
+              borderRadius: '4px',
+              mb: 1
+            }}
+            onClick={() => handleTransactionClick(transaction)}
+          >
+            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
+              <Typography 
+                component="strong" 
+                sx={{ 
+                  color: '#70B6F6',
+                  fontWeight: 500
+                }}
+              >
+                {transaction.user}
+              </Typography>
+              <Typography 
+                component="small" 
+                sx={{ 
+                  color: '#6c757d',
+                  fontSize: '0.7rem',
+                }}
+              >
+                {formatDistanceToNow(parseISO(transaction.timestamp), { addSuffix: true })}
+              </Typography>
+            </Box>
+            <Box sx={{ mb: 1, textAlign: 'left' }}>
+              <Typography 
+                sx={{ 
+                  color: '#A8B6BC',
+                  mb: 1
+                }}
+              >
+                {getTransactionDescription(transaction)}
+              </Typography>
+            </Box>
+            <Typography 
+              component='small'
+              sx={{ 
+                color: '#6c757d',
+                fontSize: '0.7rem',
+                textAlign: 'left',
+                float: 'left',
+              }}
+            >
+              {transaction.date} at {transaction.time}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
   return (
     <Card sx={{ 
       bgcolor: '#2A2F34', 
@@ -168,84 +272,7 @@ const RecentTransaction = () => {
       </Box>
 
       <Collapse in={isExpanded}>
-        <Box sx={{ 
-          maxHeight: '500px', 
-          overflow: 'auto', 
-          p: 2,
-          '&::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '&::-webkit-scrollbar-track': {
-            background: '#2A2F34',
-          },
-          '&::-webkit-scrollbar-thumb': {
-            background: '#6c757d',
-            borderRadius: '4px',
-          },
-          '&::-webkit-scrollbar-thumb:hover': {
-            background: '#555',
-          },
-          fontFamily: 'Poppins !important',
-        }}>
-          {transactions.map((transaction, index) => (
-            <Box
-              key={index}
-              sx={{
-                p: 2,
-                borderBottom: '1px solid rgba(255,255,255,0.07)',
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.03)',
-                  cursor: 'pointer'
-                },
-                borderRadius: '4px',
-                mb: 1
-              }}
-              onClick={() => handleTransactionClick(transaction)}
-            >
-              <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
-                <Typography 
-                  component="strong" 
-                  sx={{ 
-                    color: '#70B6F6',
-                    fontWeight: 500
-                  }}
-                >
-                  {transaction.user}
-                </Typography>
-                <Typography 
-                  component="small" 
-                  sx={{ 
-                    color: '#6c757d',
-                    fontSize: '0.7rem',
-                  }}
-                >
-                  {formatDistanceToNow(parseISO(transaction.timestamp), { addSuffix: true })}
-                </Typography>
-              </Box>
-              <Box sx={{ mb: 1, textAlign: 'left' }}>
-                <Typography 
-                  sx={{ 
-                    color: '#A8B6BC',
-                    mb: 1
-                  }}
-                >
-                  {getTransactionDescription(transaction)}
-                </Typography>
-              </Box>
-              <Typography 
-                component='small'
-                sx={{ 
-                  color: '#6c757d',
-                  fontSize: '0.7rem',
-                  textAlign: 'left',
-                  float: 'left',
-                }}
-              >
-                {transaction.date} at {transaction.time}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
+        {renderContent()}
       </Collapse>
     </Card>
   );

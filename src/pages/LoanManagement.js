@@ -28,6 +28,8 @@ import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } 
 import { app } from '../firebase'; // Adjust the path as necessary
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { getAuth } from 'firebase/auth'; // Add this import
+import { format } from 'date-fns'; // Add this import
 
 const MySwal = withReactContent(Swal);
 
@@ -94,6 +96,29 @@ const LoanManagement = () => {
     setFormData({ ...formData, interestAmount: value });
   };
 
+  const generateReference = () => {
+    return Math.random().toString(36).substring(2, 15);
+  };
+
+  const logTransaction = async (type, content) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const transactionLog = {
+      user: user ? user.email : 'anonymous',
+      timestamp: new Date().toISOString(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      time: new Date().toLocaleTimeString(),
+      type,
+      content: {
+        reference: generateReference(),
+        status: type === 'add' ? 'added' : type === 'delete' ? 'deleted' : 'updated',
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} loan for ${content.customerName} with amount UGX ${content.amount.toLocaleString()}`,
+        notes: `${user ? user.email : 'anonymous'} ${type} loan for ${content.customerName} with amount UGX ${content.amount.toLocaleString()}`
+      }
+    };
+    await addDoc(collection(db, 'transactionLogs'), transactionLog);
+  };
+
   // Loan management functions
   const createLoan = async (loanData) => {
     const durationInMilliseconds = durationType === 'days' 
@@ -116,6 +141,9 @@ const LoanManagement = () => {
       setLoans(prevLoans => [...prevLoans, { ...newLoan, id: docRef.id }]);
       createDebtor(newLoan, docRef.id); // Create debtor after adding loan
       setSnackbarMessage('Loan added successfully');
+
+      // Log the transaction
+      await logTransaction('add', newLoan);
     } catch (error) {
       console.error('Error adding loan:', error);
       setSnackbarMessage('Error adding loan');
@@ -181,6 +209,9 @@ const LoanManagement = () => {
   
       setLoans(loans.filter(loan => loan.id !== loanId));
       setSnackbarMessage('Loan and associated debtor deleted successfully');
+
+      // Log the transaction
+      await logTransaction('delete', { loanId });
     } catch (error) {
       console.error('Error deleting loan and debtor:', error);
       setSnackbarMessage('Error deleting loan and debtor');
@@ -199,6 +230,9 @@ const LoanManagement = () => {
         setLoans(loans.map(loan => loan.id === currentLoanId ? { ...loan, ...formData } : loan));
         await updateDebtor(currentLoanId, formData); // Update debtor document
         setSnackbarMessage('Loan updated successfully');
+
+        // Log the transaction
+        await logTransaction('update', formData);
       } else {
         await createLoan(formData); // Create new loan
       }

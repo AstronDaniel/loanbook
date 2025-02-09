@@ -53,18 +53,21 @@ const DuePaymentsCard = () => {
           dueAccounts: '0',
           overdueTotalAmount: `UGX ${overdueTotalAmount.toLocaleString()}`,
           overdueAccounts: overdue.length.toString(),
-          customers: overdue.map(debtor => ({
-            id: debtor.loanId,
-            name: debtor.customerName,
-            amount: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
-            outstandingPrincipal: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
-            outstandingInterest: `UGX ${debtor.currentOpeningInterest.toLocaleString()}`,
-            dueDate: debtor.lastUpdated.split('T')[0],
-            status: 'overdue',
-            phone: debtor.phone,
-            loanId: debtor.loanId,
-            daysOverdue: Math.floor((new Date(today) - new Date(debtor.lastUpdated)) / (1000 * 60 * 60 * 24))
-          }))
+          customers: overdue.map(debtor => {
+            const lastUpdated = typeof debtor.lastUpdated === 'string' ? debtor.lastUpdated.split('T')[0] : '';
+            return {
+              id: debtor.loanId,
+              name: debtor.customerName,
+              amount: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
+              outstandingPrincipal: `UGX ${debtor.currentOpeningPrincipal.toLocaleString()}`,
+              outstandingInterest: `UGX ${debtor.currentOpeningInterest.toLocaleString()}`,
+              dueDate: lastUpdated,
+              status: 'overdue',
+              phone: debtor.phone,
+              loanId: debtor.loanId,
+              daysOverdue: Math.floor((new Date(today) - new Date(lastUpdated)) / (1000 * 60 * 60 * 24))
+            };
+          })
         });
 
         console.log('Due Payments Data:', duePaymentsData); // Debugging log

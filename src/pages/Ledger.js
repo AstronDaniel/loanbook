@@ -425,7 +425,7 @@ const LedgerPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                   <ArrowUpCircle size={16} color="green" />
                   <Typography variant="body2" color="success.main" sx={{ ml: 1 }}>
-                    +12.5% from last month
+                    Balance
                   </Typography>
                 </Box>
               </Box>

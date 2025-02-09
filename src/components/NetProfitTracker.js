@@ -50,14 +50,14 @@ const NetProfitTracker = ({ darkMode }) => {
           // Calculate customer interest from debtor monthly records
           const customerInterest = debtors.reduce((acc, debtor) => {
             const monthlyRecords = debtor.monthlyRecords || [];
-            const interestPaid = monthlyRecords.reduce((sum, record) => {
+            const interestCharged = monthlyRecords.reduce((sum, record) => {
               const recordDate = new Date(record.date);
               if (recordDate.getFullYear() === selectedYear && (recordDate.getMonth() + 1).toString().padStart(2, '0') === month) {
-                return sum + (record.intrestPaid || 0);
+                return sum + (record.interestCharge || 0);
               }
               return sum;
             }, 0);
-            return acc + interestPaid;
+            return acc + interestCharged;
           }, 0);
 
           const totalRevenue = customerInterest + bankInterest;
