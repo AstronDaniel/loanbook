@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 import { 
   Card, 
   CardContent, 
@@ -50,10 +52,11 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { app } from '../firebase';
 import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
+import { getAuth } from 'firebase/auth';
 
 // Styled Components
 const StyledCard = styled(Card)(({ theme }) => ({
@@ -74,6 +77,18 @@ const IconWrapper = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
 }));
 
+const expenseTypes = [
+  'Service Charge',
+  'Withdraw Charges',
+  'Transport',
+  'Transfer Fee',
+  'Annual Debit Card Fee',
+  'Withholding Tax',
+  'Airtime and Data'
+];
+
+const MySwal = withReactContent(Swal);
+
 const LedgerPage = () => {
   // State Management
   const [entries, setEntries] = useState([]);
@@ -85,8 +100,6 @@ const LedgerPage = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState(null);
   const [newEntry, setNewEntry] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     description: '',
@@ -106,6 +119,7 @@ const LedgerPage = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [creatingEntry, setCreatingEntry] = useState(false);
+  const [selectedExpenseType, setSelectedExpenseType] = useState(expenseTypes[0]);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -116,12 +130,14 @@ const LedgerPage = () => {
   };
 
   const formatNumberWithCommas = (number) => {
+    if (!number) return '';
     return number.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
 
   const handleBankInterestChange = (e) => {
     const value = e.target.value.replace(/,/g, '');
     setNewEntry({ ...newEntry, bankInterest: value });
+   
   };
 
   const handleServiceChargeChange = (e) => {
@@ -159,6 +175,21 @@ const LedgerPage = () => {
     setNewEntry({ ...newEntry, airtimeAndData: value });
   };
 
+  const handleExpenseTypeChange = (e) => {
+    setSelectedExpenseType(e.target.value);
+   
+  };
+
+  const handleExpenseAmountChange = (e) => {
+    const value = e.target.value.replace(/,/g, '');
+    const key = selectedExpenseType.replace(/ /g, '').toLowerCase();
+    setNewEntry((prevEntry) => ({
+      ...prevEntry,
+      [key]: value
+    }));
+   
+  };
+
   // Fetch entries from Firestore
   const fetchEntries = async () => {
     setLoading(true);
@@ -182,6 +213,21 @@ const LedgerPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const logTransaction = async (type, content) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const transactionLog = {
+      user: user ? user.email : 'anonymous',
+      timestamp: new Date().toISOString(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      time: new Date().toLocaleTimeString(),
+      type,
+      content
+    };
+    const db = getFirestore(app);
+    await addDoc(collection(db, 'transactionLogs'), transactionLog);
   };
 
   useEffect(() => {
@@ -226,20 +272,25 @@ const LedgerPage = () => {
     setCreatingEntry(true);
     const entry = {
       ...newEntry,
-      bankInterest: Number(newEntry.bankInterest),
-      serviceCharge: Number(newEntry.serviceCharge),
-      withdrawCharges: Number(newEntry.withdrawCharges),
-      transport: Number(newEntry.transport),
-      transferFee: Number(newEntry.transferFee),
-      annualDebitCardFee: Number(newEntry.annualDebitCardFee),
-      withholdingTax: Number(newEntry.withholdingTax),
-      airtimeAndData: Number(newEntry.airtimeAndData)
+      bankInterest: Number(newEntry.bankInterest) || 0,
+      serviceCharge: Number(newEntry.servicecharge) || 0,
+      withdrawCharges: Number(newEntry.withdrawcharges) || 0,
+      transport: Number(newEntry.transport) || 0,
+      transferFee: Number(newEntry.transferfee) || 0,
+      annualDebitCardFee: Number(newEntry.annualdebitcardfee) || 0,
+      withholdingTax: Number(newEntry.withholdingtax) || 0,
+      airtimeAndData: Number(newEntry.airtimeanddata) || 0
     };
+  
     try {
       const db = getFirestore(app);
       const collectionName = newEntry.type === 'revenue' ? 'revenue' : 'expenses';
       await addDoc(collection(db, collectionName), entry);
       setEntries([entry, ...entries]);
+
+      // Log the transaction
+      await logTransaction('add', entry);
+
       setShowNewEntryDialog(false);
       setNewEntry({
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -267,20 +318,44 @@ const LedgerPage = () => {
     }
   };
 
-  const handleDeleteEntry = async () => {
-    try {
-      const db = getFirestore(app);
-      const collectionName = entryToDelete.type === 'revenue' ? 'revenue' : 'expenses';
-      await deleteDoc(doc(db, collectionName, entryToDelete.id));
-      setEntries(entries.filter(entry => entry.id !== entryToDelete.id));
-      setDeleteDialogOpen(false);
-      setEntryToDelete(null);
-      setSnackbarMessage('Entry deleted successfully');
-    } catch (err) {
-      console.error('Error deleting entry:', err);
-      setSnackbarMessage('Error deleting entry');
-    } finally {
-      setSnackbarOpen(true);
+  const handleDeleteEntry = async (entry) => {
+    const result = await MySwal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    });
+  
+    if (result.isConfirmed) {
+      try {
+        const db = getFirestore(app);
+        const collectionName = entry.type === 'revenue' ? 'revenue' : 'expenses';
+        await deleteDoc(doc(db, collectionName, entry.id));
+        setEntries(entries.filter(e => e.id !== entry.id));
+  
+        // Log the transaction
+        await logTransaction('delete', entry);
+  
+        setSnackbarMessage('Entry deleted successfully');
+        MySwal.fire(
+          'Deleted!',
+          'Your entry has been deleted.',
+          'success'
+        );
+      } catch (err) {
+        console.error('Error deleting entry:', err);
+        setSnackbarMessage('Error deleting entry');
+        MySwal.fire(
+          'Error!',
+          'There was an error deleting your entry.',
+          'error'
+        );
+      } finally {
+        setSnackbarOpen(true);
+      }
     }
   };
 
@@ -758,88 +833,24 @@ const LedgerPage = () => {
                 {newEntry.type === 'expenses' && (
                   <>
                     <Grid item xs={12}>
-                      <TextField
-                        label="Service Charge"
-                        value={formatNumberWithCommas(newEntry.serviceCharge)}
-                        onChange={handleServiceChargeChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
+                      <FormControl fullWidth>
+                        <InputLabel>Expense Type</InputLabel>
+                        <Select
+                          value={selectedExpenseType}
+                          label="Expense Type"
+                          onChange={handleExpenseTypeChange}
+                        >
+                          {expenseTypes.map((type) => (
+                            <MenuItem key={type} value={type}>{type}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </Grid>
                     <Grid item xs={12}>
                       <TextField
-                        label="Withdraw Charges"
-                        value={formatNumberWithCommas(newEntry.withdrawCharges)}
-                        onChange={handleWithdrawChargesChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Transport"
-                        value={formatNumberWithCommas(newEntry.transport)}
-                        onChange={handleTransportChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Transfer Fee"
-                        value={formatNumberWithCommas(newEntry.transferFee)}
-                        onChange={handleTransferFeeChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Annual Debit Card Fee"
-                        value={formatNumberWithCommas(newEntry.annualDebitCardFee)}
-                        onChange={handleAnnualDebitCardFeeChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Withholding Tax"
-                        value={formatNumberWithCommas(newEntry.withholdingTax)}
-                        onChange={handleWithholdingTaxChange}
-                        fullWidth
-                        type="text"
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start">UGX</InputAdornment>,
-                          inputProps: { min: 0, step: 0.01 }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Airtime and Data"
-                        value={formatNumberWithCommas(newEntry.airtimeAndData)}
-                        onChange={handleAirtimeAndDataChange}
+                        label={selectedExpenseType}
+                        value={formatNumberWithCommas(newEntry[selectedExpenseType.replace(/ /g, '').toLowerCase()])}
+                        onChange={handleExpenseAmountChange}
                         fullWidth
                         type="text"
                         InputProps={{
@@ -883,31 +894,9 @@ const LedgerPage = () => {
               <Button 
                 variant="contained" 
                 onClick={handleNewEntry}
-                disabled={creatingEntry || !newEntry.description || (newEntry.type === 'revenue' && !newEntry.bankInterest) || (newEntry.type === 'expenses' && !newEntry.serviceCharge && !newEntry.withdrawCharges && !newEntry.transport && !newEntry.transferFee && !newEntry.annualDebitCardFee && !newEntry.withholdingTax && !newEntry.airtimeAndData)}
+                disabled={creatingEntry || !newEntry.description || (newEntry.type === 'revenue' && !newEntry.bankInterest) || (newEntry.type === 'expenses' && !newEntry[selectedExpenseType.replace(/ /g, '').toLowerCase()])}
               >
                 {creatingEntry ? 'Creating...' : 'Add Entry'}
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          {/* Delete Confirmation Dialog */}
-          <Dialog
-            open={deleteDialogOpen}
-            onClose={() => setDeleteDialogOpen(false)}
-          >
-            <DialogTitle>Delete Entry</DialogTitle>
-            <DialogContent>
-              <Typography>
-                Are you sure you want to delete this entry? This action cannot be undone.
-              </Typography>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-              <Button 
-                color="error" 
-                onClick={handleDeleteEntry}
-              >
-                Delete
               </Button>
             </DialogActions>
           </Dialog>
@@ -925,14 +914,9 @@ const LedgerPage = () => {
               <Eye size={16} style={{ marginRight: 8 }} />
               View Details
             </MenuItem>
-            <MenuItem onClick={handleMenuClose}>
-              <Edit size={16} style={{ marginRight: 8 }} />
-              Edit Entry
-            </MenuItem>
             <MenuItem 
               onClick={() => {
-                setEntryToDelete(selectedEntry);
-                setDeleteDialogOpen(true);
+                handleDeleteEntry(selectedEntry);
                 handleMenuClose();
               }}
               sx={{ color: 'error.main' }}

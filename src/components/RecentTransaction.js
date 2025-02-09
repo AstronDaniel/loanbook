@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Card, 
@@ -11,56 +11,29 @@ import {
   KeyboardArrowUp as ArrowUpIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { app } from '../firebase';
+import { formatDistanceToNow, parseISO } from 'date-fns';
 
-
-const mockUserActivities = [
-  {
-    id: 1,
-    user: 'Monica Smith',
-    content: 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
-    subContent: 'Lorem Ipsum',
-    time: '1m ago',
-    date: 'Today 5:60 pm - 12.06.2014'
-  },
-  {
-    id: 2,
-    user: 'John Angel',
-    content: 'There are many variations of passages of Lorem Ipsum available',
-    time: '2m ago',
-    date: 'Today 2:23 pm - 11.06.2014'
-  },
-  {
-    id: 3,
-    user: 'Jesica Ocean',
-    content: 'Contrary to popular belief, Lorem Ipsum',
-    time: '5m ago',
-    date: 'Today 1:00 pm - 08.06.2014'
-  },
-  {
-    id: 4,
-    user: 'Monica Jackson',
-    content: 'The generated Lorem Ipsum is therefore',
-    time: '5m ago',
-    date: 'Yesterday 8:48 pm - 10.06.2014'
-  },
-  {
-    id: 5,
-    user: 'Anna Legend',
-    content: 'All the Lorem Ipsum generators on the Internet tend to repeat',
-    time: '5m ago',
-    date: 'Yesterday 8:48 pm - 10.06.2014'
-  },
-  {
-    id: 6,
-    user: 'Damian Nowak',
-    content: 'The standard chunk of Lorem Ipsum used',
-    time: '5m ago',
-    date: 'Yesterday 8:48 pm - 10.06.2014'
-  }
-];
-
-const UserActivityFeed = () => {
+const RecentTransaction = () => {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const db = getFirestore(app);
+        const logsSnapshot = await getDocs(collection(db, 'transactionLogs'));
+        const logsData = logsSnapshot.docs.map(doc => doc.data());
+        logsData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setTransactions(logsData);
+      } catch (err) {
+        console.error('Error fetching transaction logs:', err);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
 
   return (
     <Card sx={{ 
@@ -79,7 +52,10 @@ const UserActivityFeed = () => {
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h6" sx={{ color: '#fff', fontWeight: 500 }}>
-            User Activity
+            Recent Transactions
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#6c757d', ml: 1 }}>
+            ({transactions.length} transactions)
           </Typography>
         </Box>
         <Box> 
@@ -116,9 +92,9 @@ const UserActivityFeed = () => {
           },
           fontFamily: 'Poppins !important',
         }}>
-          {mockUserActivities.map((activity) => (
+          {transactions.map((transaction, index) => (
             <Box
-              key={activity.id}
+              key={index}
               sx={{
                 p: 2,
                 borderBottom: '1px solid rgba(255,255,255,0.07)',
@@ -128,7 +104,6 @@ const UserActivityFeed = () => {
                 borderRadius: '4px',
                 mb: 1
               }}
-              
             >
               <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                 <Typography 
@@ -138,7 +113,7 @@ const UserActivityFeed = () => {
                     fontWeight: 500
                   }}
                 >
-                  {activity.user}
+                  {transaction.user}
                 </Typography>
                 <Typography 
                   component="small" 
@@ -147,7 +122,7 @@ const UserActivityFeed = () => {
                     fontSize: '0.7rem',
                   }}
                 >
-                  {activity.time}
+                  {formatDistanceToNow(parseISO(transaction.timestamp), { addSuffix: true })}
                 </Typography>
               </Box>
               <Box sx={{ mb: 1, textAlign: 'left' }}>
@@ -157,18 +132,8 @@ const UserActivityFeed = () => {
                     mb: 1
                   }}
                 >
-                  {activity.content}
+                  {transaction.type} - {transaction.content.description}
                 </Typography>
-                {activity.subContent && (
-                  <Typography 
-                    sx={{ 
-                      color: '#A8B6BC',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    {activity.subContent}
-                  </Typography>
-                )}
               </Box>
               <Typography 
                 component='small'
@@ -179,7 +144,7 @@ const UserActivityFeed = () => {
                   float: 'left',
                 }}
               >
-                {activity.date}
+                {transaction.date} at {transaction.time}
               </Typography>
             </Box>
           ))}
@@ -189,4 +154,4 @@ const UserActivityFeed = () => {
   );
 };
 
-export default UserActivityFeed;
+export default RecentTransaction;
