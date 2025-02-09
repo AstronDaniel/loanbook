@@ -11,7 +11,9 @@ import MonthlyDetailsCard from '../components/MonthlyDetailsCard'; // Import the
 import Filters from '../components/Filters'; // Import the Filters component
 import LoanDisbursementsOverTime from '../components/LoanDisbursementsOverTime'; // Import the new component
 import InterestEarnedOverTime from '../components/InterestEarnedOverTime';
-
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import TextField from '@mui/material/TextField'; // Import TextField
 
 const db = getFirestore(app);
 
@@ -19,12 +21,16 @@ const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [recentTransactions, setRecentTransactions] = useState([]);
+  const [dailyTransactions, setDailyTransactions] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [dateTransactions, setDateTransactions] = useState([]);
   const [stats, setStats] = useState({
     totalLoans: 0,
     activeBorrowers: 0,
     monthlyInterest: 0,
     duePayments: 0,
-  }); 
+  });
+
   const [darkMode, setDarkMode] = useState(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
     return savedDarkMode ? JSON.parse(savedDarkMode) : false;
@@ -96,11 +102,56 @@ const Dashboard = () => {
     setRecentTransactions(transactionsData);
   };
 
+  const fetchDailyTransactions = async () => {
+    const today = new Date();
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    const transactionsQuery = query(
+      collection(db, 'transactions'),
+      where('date', '>=', startOfDay),
+      where('date', '<=', endOfDay)
+    );
+
+    const querySnapshot = await getDocs(transactionsQuery);
+    const transactionsData = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        date: data.date.toDate().toLocaleDateString(), // Convert Firestore timestamp to date string
+      };
+    });
+    setDailyTransactions(transactionsData);
+  };
+
+  const fetchDateTransactions = async (date) => {
+    const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+    const transactionsQuery = query(
+      collection(db, 'transactions'),
+      where('date', '>=', startOfDay),
+      where('date', '<=', endOfDay)
+    );
+
+    const querySnapshot = await getDocs(transactionsQuery);
+    const transactionsData = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        date: data.date.toDate().toLocaleDateString(), // Convert Firestore timestamp to date string
+      };
+    });
+    setDateTransactions(transactionsData);
+  };
+
   const fetchStats = async () => {
     const loansSnapshot = await getDocs(collection(db, 'loans'));
     const loansData = loansSnapshot.docs.map(doc => doc.data());
 
-    // to get duePayemnets
+    // to get duePayments
     const dueP = await getDocs(collection(db, 'debtors'));
     const duePData = dueP.docs.map(doc => doc.data());
     const dues = duePData.reduce((sum, data) => sum + parseInt(data.currentOpeningPrincipal), 0);
@@ -169,7 +220,7 @@ const Dashboard = () => {
 
       // Additional client-side filtering for search query
       if (filters.searchQuery) {
-        filteredData = filteredData.filter(debtor => 
+        filteredData = filteredData.filter(debtor =>
           debtor.customerName.toLowerCase().includes(filters.searchQuery.toLowerCase())
         );
       }
@@ -185,6 +236,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchRecentTransactions();
+    fetchDailyTransactions();
     fetchStats();
   }, []);
 
@@ -200,6 +252,11 @@ const Dashboard = () => {
     setFilters(newFilters);
   };
 
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    fetchDateTransactions(date);
+  };
+
   const currentTheme = THEMES[darkMode ? 'dark' : 'light'];
 
   return (
@@ -213,10 +270,10 @@ const Dashboard = () => {
       )}
 
       {/* Sidebar */}
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
-        toggleSidebar={toggleSidebar} 
-        activeSection={activeSection} 
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        activeSection={activeSection}
         setActiveSection={setActiveSection}
         darkMode={darkMode}
       />
@@ -308,6 +365,76 @@ const Dashboard = () => {
             ))}
           </div>
 
+          {/* Daily Transactions Section */}
+          <div className={`
+            ${currentTheme.card} 
+            p-4 md:p-6 
+            rounded-xl 
+            ${currentTheme.shadow} 
+            border ${currentTheme.border} 
+            mb-6
+          `}>
+            <h3 className={`text-lg font-semibold mb-4 ${currentTheme.text.primary}`}>
+              Daily Transactions
+            </h3>
+            <div className="overflow-y-auto max-h-96">
+              {dailyTransactions.length > 0 ? (
+                <ul>
+                  {dailyTransactions.map(transaction => (
+                    <li key={transaction.id} className="mb-2">
+                      <div className="flex justify-between">
+                        <span className={currentTheme.text.primary}>{transaction.date}</span>
+                        <span className={currentTheme.text.secondary}>{transaction.amount}</span>
+                      </div>
+                      <div className={currentTheme.text.secondary}>{transaction.description}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={currentTheme.text.secondary}>No transactions for today.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Date Picker for Transactions */}
+          <div className={`
+            ${currentTheme.card} 
+            p-4 md:p-6 
+            rounded-xl 
+            ${currentTheme.shadow} 
+            border ${currentTheme.border} 
+            mb-6
+          `}>
+            <h3 className={`text-lg font-semibold mb-4 ${currentTheme.text.primary}`}>
+              Transactions by Date
+            </h3>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label="Select Date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                renderInput={(params) => <TextField {...params} fullWidth />}
+              />
+            </LocalizationProvider>
+            <div className="overflow-y-auto max-h-96 mt-4">
+              {dateTransactions.length > 0 ? (
+                <ul>
+                  {dateTransactions.map(transaction => (
+                    <li key={transaction.id} className="mb-2">
+                      <div className="flex justify-between">
+                        <span className={currentTheme.text.primary}>{transaction.date}</span>
+                        <span className={currentTheme.text.secondary}>{transaction.amount}</span>
+                      </div>
+                      <div className={currentTheme.text.secondary}>{transaction.description}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={currentTheme.text.secondary}>No transactions for the selected date.</p>
+              )}
+            </div>
+          </div>
+
           {/* Filters Section */}
           <Filters onFilterChange={handleFilterChange} darkMode={darkMode} />
 
@@ -317,12 +444,14 @@ const Dashboard = () => {
               <OverdueDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors} />
             </div>
             <div className="overflow-y-auto max-h-96">
-              <BadDebtorsCard darkMode={darkMode} filteredDebtorss={filteredDebtors} />
+              <BadDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors} />
             </div>
           </div>
-            {/* Loan Disbursements Over Time */}
-<LoanDisbursementsOverTime darkMode={darkMode} />
-<br />
+
+          {/* Loan Disbursements Over Time */}
+          <LoanDisbursementsOverTime darkMode={darkMode} />
+          <br />
+
           {/* Asset Distribution */}
           <div className={`
             ${currentTheme.card} 
@@ -378,9 +507,11 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-{/* Interest Earned Over Time */}
-<InterestEarnedOverTime darkMode={darkMode} />
-<br />
+
+          {/* Interest Earned Over Time */}
+          <InterestEarnedOverTime darkMode={darkMode} />
+          <br />
+
           {/* Monthly Details Card */}
           <MonthlyDetailsCard darkMode={darkMode} />
         </main>
