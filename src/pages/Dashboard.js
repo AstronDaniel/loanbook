@@ -441,10 +441,10 @@ const Dashboard = () => {
           {/* Overdue and Bad Debtors Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div className="overflow-y-auto max-h-96">
-              <OverdueDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors} />
+              <OverdueDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors || []} />
             </div>
             <div className="overflow-y-auto max-h-96">
-              <BadDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors} />
+              <BadDebtorsCard darkMode={darkMode} filteredDebtors={filteredDebtors || []} />
             </div>
           </div>
 
