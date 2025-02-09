@@ -22,7 +22,7 @@ import DebtorManagementModal from './DebtorManagementModal';
 
 const MySwal = withReactContent(Swal);
 
-const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
+const BadDebtorsCard = ({ darkMode , filteredDebtors = [] }) => {
   const [badDebtors, setBadDebtors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -140,7 +140,7 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
       </div>
     );
 
-    const filteredDebtors = filteredDebtorss.filter(debtor => 
+    const filteredDebtorsList = filteredDebtors.filter(debtor => 
       debtor.customerName.toLowerCase().includes(searchQuery.toLowerCase() ) && debtor.status === 'overdue'
     );
     // const overdueFilteredDebtors = filteredDebtors.filter(debtor => debtor.status === 'overdue');
@@ -171,7 +171,7 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
           </h2>
           <div className="flex items-center space-x-2">
             <span className={`text-sm ${currentTheme.text.secondary}`}>
-              Total Bad Debtors: {filteredDebtors.length}
+              Total Bad Debtors: {filteredDebtorsList.length}
             </span>
             <FileText 
               className={`w-5 h-5 text-blue-500 cursor-pointer hover:text-blue-600`}
@@ -179,8 +179,8 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
                 title: 'Bad Debtors Report',
                 html: `
                   <div class="text-left">
-                    <p>Total Bad Debtors: <strong>${filteredDebtors.length}</strong></p>
-                    <p>Total Outstanding Principal: <strong>UGX ${filteredDebtors.reduce((sum, debtor) => sum + debtor.currentOpeningPrincipal, 0).toLocaleString()}</strong></p>
+                    <p>Total Bad Debtors: <strong>${filteredDebtorsList.length}</strong></p>
+                    <p>Total Outstanding Principal: <strong>UGX ${filteredDebtorsList.reduce((sum, debtor) => sum + debtor.currentOpeningPrincipal, 0).toLocaleString()}</strong></p>
                   </div>
                 `,
                 icon: 'info'
@@ -197,9 +197,9 @@ const BadDebtorsCard = ({ darkMode , filteredDebtorss }) => {
           ${currentTheme.scrollbar.track} 
           ${currentTheme.scrollbar.thumb}
         `}>
-          {filteredDebtors.length > 0 ? (
+          {filteredDebtorsList.length > 0 ? (
             <div className="space-y-4">
-              {filteredDebtors.map((debtor) => (
+              {filteredDebtorsList.map((debtor) => (
                 <div 
                   key={debtor.id} 
                   className={`
