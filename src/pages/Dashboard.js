@@ -355,10 +355,10 @@ const Dashboard = () => {
             </div>
           </div>
           {/* Loan Disbursements Over Time */}
-          <LoanDisbursementsOverTime darkMode={darkMode} />
+          {/* <LoanDisbursementsOverTime darkMode={darkMode} /> */}
           <br />
           {/* Asset Distribution */}
-          <div className={`
+          {/* <div className={`
             ${currentTheme.card} 
             p-4 md:p-6 
             rounded-xl 
@@ -411,12 +411,12 @@ const Dashboard = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </div> */}
           {/* Interest Earned Over Time */}
-          <InterestEarnedOverTime darkMode={darkMode} />
+          {/* <InterestEarnedOverTime darkMode={darkMode} /> */}
           <br />
           {/* Monthly Details Card */}
-          <MonthlyDetailsCard darkMode={darkMode} />
+          {/* <MonthlyDetailsCard darkMode={darkMode} /> */}
         </main>
       </div>
     </div>
