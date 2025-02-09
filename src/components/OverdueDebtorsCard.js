@@ -20,6 +20,9 @@ import {
 import DebtorManagementModal from './DebtorManagementModal';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { getAuth } from 'firebase/auth';
+import { differenceInDays, parseISO, format } from 'date-fns';
+
 
 const MySwal = withReactContent(Swal);
 
@@ -131,6 +134,24 @@ const OverdueDebtorsCard = ({ darkMode, filteredDebtors }) => {
         extendedDate: dueDate,
         timestamp: new Date()
       });
+
+      // Log the transaction
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const transactionLog = {
+        user: user ? user.email : 'anonymous',
+        timestamp: new Date().toISOString(),
+        date: format(new Date(), 'yyyy-MM-dd'),
+        time: new Date().toLocaleTimeString(),
+        type: 'extend',
+        content: {
+          reference: Math.random().toString(36).substring(2, 15),
+          status: 'extended',
+          description: `Extended due date for ${selectedDebtor.customerName} to ${dueDate}`,
+          notes: notes
+        }
+      };
+      await addDoc(collection(db, 'transactionLogs'), transactionLog);
 
       console.log('Due date extended and communication log created for debtor:', selectedDebtor);
       await MySwal.fire({

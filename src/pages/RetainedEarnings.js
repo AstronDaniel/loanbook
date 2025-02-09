@@ -34,6 +34,7 @@ import Sidebar from '../components/SideBar';
 import Header from '../components/Header';
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where } from 'firebase/firestore';
 import { app } from '../firebase';
+import { getAuth } from 'firebase/auth';
 
 const db = getFirestore(app);
 
@@ -86,6 +87,26 @@ const StatCard = ({ title, value, icon: Icon, trend, color }) => {
       </CardContent>
     </Card>
   );
+};
+
+const logTransaction = async (type, content, investor) => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const transactionLog = {
+    user: user ? user.email : 'anonymous',
+    timestamp: new Date().toISOString(),
+    date: format(new Date(), 'yyyy-MM-dd'),
+    time: new Date().toLocaleTimeString(),
+    type,
+    content: {
+      reference: Math.random().toString(36).substring(2, 15),
+      status: type === 'add' ? 'added' : type === 'delete' ? 'deleted' : 'updated',
+      transferFee: content.amount,
+      description: `${type.charAt(0).toUpperCase() + type.slice(1)} distribution of UGX ${content.amount.toLocaleString()} for ${investor.name}`,
+      notes: `${user ? user.email : 'anonymous'} ${type} distribution for investor ${investor.name} with amount UGX ${content.amount.toLocaleString()}`
+    }
+  };
+  await addDoc(collection(db, 'transactionLogs'), transactionLog);
 };
 
 const RetainedEarnings = () => {
@@ -158,6 +179,10 @@ const RetainedEarnings = () => {
       setSelectedInvestor('');
       setDistributionAmount('');
       setSnackbar({ open: true, message: 'Distribution added successfully', severity: 'success' });
+
+      // Log the transaction
+      const investor = investors.find(inv => inv.id === selectedInvestor);
+      await logTransaction('add', distributionData, investor);
     } catch (error) {
       console.error('Error adding distribution:', error);
       setSnackbar({ open: true, message: 'Error adding distribution', severity: 'error' });
@@ -218,10 +243,35 @@ const RetainedEarnings = () => {
     if (editingDistribution && newAmount) {
       setLoading(true);
       try {
-        const distributionDoc = doc(db, 'distributions', editingDistribution.id);
-        await updateDoc(distributionDoc, { amount: parseFloat(newAmount.replace(/,/g, '')) });
+        // First, query to find if a distribution document exists for this investor and month
+        const distributionsRef = collection(db, 'distributions');
+        const q = query(
+          distributionsRef, 
+          where('investorId', '==', editingDistribution.id),
+          where('date', '==', selectedMonth + '-01')
+        );
+        const querySnapshot = await getDocs(q);
+        
+        let distributionDoc;
+        
+        if (querySnapshot.empty) {
+          // If no document exists, create a new one
+          const newDistributionData = {
+            investorId: editingDistribution.id,
+            date: selectedMonth + '-01',
+            amount: parseFloat(newAmount.replace(/,/g, ''))
+          };
+          
+          distributionDoc = await addDoc(collection(db, 'distributions'), newDistributionData);
+        } else {
+          // If document exists, update it
+          distributionDoc = querySnapshot.docs[0];
+          await updateDoc(doc(db, 'distributions', distributionDoc.id), {
+            amount: parseFloat(newAmount.replace(/,/g, ''))
+          });
+        }
 
-        // Refresh the distributions data
+        // Update local state
         setDistributions(prev => ({
           ...prev,
           [selectedMonth]: {
@@ -229,13 +279,30 @@ const RetainedEarnings = () => {
             [editingDistribution.id]: parseFloat(newAmount.replace(/,/g, ''))
           }
         }));
-        
+
+        // Get investor data for logging
+        const investor = investors.find(inv => inv.id === editingDistribution.id);
+
+        // Log the transaction
+        await logTransaction(querySnapshot.empty ? 'add' : 'update', {
+          amount: parseFloat(newAmount.replace(/,/g, '')),
+          date: selectedMonth + '-01'
+        }, investor);
+
         setEditingDistribution(null);
         setNewAmount("");
         setSnackbar({ open: true, message: 'Distribution updated successfully', severity: 'success' });
+        
+        // Refresh distributions to ensure UI is in sync with database
+        fetchDistributions();
+        
       } catch (error) {
         console.error('Error updating distribution:', error);
-        setSnackbar({ open: true, message: 'Error updating distribution', severity: 'error' });
+        setSnackbar({ 
+          open: true, 
+          message: `Error  ${error.message}`, 
+          severity: 'error' 
+        });
       } finally {
         setLoading(false);
       }

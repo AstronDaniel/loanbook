@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
-import { Wallet, Users, TrendingUp, Calendar, MoreVertical } from 'lucide-react';
+import { Wallet, Users, TrendingUp, Calendar, MoreVertical, Box } from 'lucide-react';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { app } from '../firebase'; // Adjust the path as necessary
 import OverdueDebtorsCard from '../components/OverdueDebtorsCard'; // Import the new component
@@ -11,7 +11,26 @@ import MonthlyDetailsCard from '../components/MonthlyDetailsCard'; // Import the
 import Filters from '../components/Filters'; // Import the Filters component
 import LoanDisbursementsOverTime from '../components/LoanDisbursementsOverTime'; // Import the new component
 import InterestEarnedOverTime from '../components/InterestEarnedOverTime';
+// new implementations
+import RecentTransaction from '../components/RecentTransaction';
+import BorrowersCard from '../components/BorrowersCard';
+import PrincipalAdvancedCard from '../components/PrincipalAdvancedCard';
+import InterestChargeCard from '../components/InterestCharged';
+import DuePaymentsCard from '../components/DuePaymentsCard';
 
+
+
+
+// Add Google Fonts link for Poppins and Inter
+const linkPoppins = document.createElement('link');
+linkPoppins.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap';
+linkPoppins.rel = 'stylesheet';
+document.head.appendChild(linkPoppins);
+
+const linkInter = document.createElement('link');
+linkInter.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap';
+linkInter.rel = 'stylesheet';
+document.head.appendChild(linkInter);
 
 const db = getFirestore(app);
 
@@ -24,7 +43,7 @@ const Dashboard = () => {
     activeBorrowers: 0,
     monthlyInterest: 0,
     duePayments: 0,
-  }); 
+  });
   const [darkMode, setDarkMode] = useState(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
     return savedDarkMode ? JSON.parse(savedDarkMode) : false;
@@ -36,6 +55,7 @@ const Dashboard = () => {
     toDate: null,
   });
   const [filteredDebtors, setFilteredDebtors] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Theme-based color schemes
   const THEMES = {
@@ -76,7 +96,7 @@ const Dashboard = () => {
   };
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
-  
+
   const pieData = [
     { name: 'Cash at Hand', value: 4000000 },
     { name: 'Cash at Bank', value: 3000000 },
@@ -162,14 +182,14 @@ const Dashboard = () => {
 
       // Filter by loan type or date if loans were fetched
       if (filteredLoans.length > 0) {
-        filteredData = filteredData.filter(debtor => 
+        filteredData = filteredData.filter(debtor =>
           filteredLoans.some(loan => loan.loanId === debtor.loanId)
         );
       }
 
       // Additional client-side filtering for search query
       if (filters.searchQuery) {
-        filteredData = filteredData.filter(debtor => 
+        filteredData = filteredData.filter(debtor =>
           debtor.customerName.toLowerCase().includes(filters.searchQuery.toLowerCase())
         );
       }
@@ -201,22 +221,24 @@ const Dashboard = () => {
   };
 
   const currentTheme = THEMES[darkMode ? 'dark' : 'light'];
+  const statCardFont = 'font-poppins'; // Updated to use Poppins font
+  const contentFont = 'font-inter'; // Updated to use Inter font
 
   return (
-    <div className={`flex h-screen ${currentTheme.background} transition-colors duration-300`}>
+    <div className={`flex h-screen ${currentTheme.background} transition-colors duration-300 ${contentFont}`}>
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
           onClick={toggleSidebar}
         />
       )}
 
       {/* Sidebar */}
-      <Sidebar 
-        isSidebarOpen={isSidebarOpen} 
-        toggleSidebar={toggleSidebar} 
-        activeSection={activeSection} 
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        activeSection={activeSection}
         setActiveSection={setActiveSection}
         darkMode={darkMode}
       />
@@ -224,61 +246,58 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navigation */}
-        <Header 
-          toggleSidebar={toggleSidebar} 
-          darkMode={darkMode} 
+        <Header
+          toggleSidebar={toggleSidebar}
+          darkMode={darkMode}
         />
 
         {/* Dashboard Content */}
         <main className={`
           flex-1 overflow-y-auto p-4 
           scrollbar-thin 
-          ${darkMode 
-            ? 'scrollbar-thumb-gray-700 scrollbar-track-gray-800' 
+          ${darkMode
+            ? 'scrollbar-thumb-gray-700 scrollbar-track-gray-800'
             : 'scrollbar-thumb-gray-300 scrollbar-track-gray-100'
           }
         `}>
           {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
-              { 
-                icon: <Wallet />, 
-                label: 'Principal Advanced', 
-                value: stats.totalLoans, 
-                change: '+12%',
-                iconColor: 'text-blue-600' 
+              {
+                icon: <Wallet />,
+                label: 'Principal Advanced',
+                value: stats.totalLoans,
+                iconColor: 'text-blue-600'
               },
-              { 
-                icon: <Users />, 
-                label: 'Active Borrowers', 
-                value: stats.activeBorrowers, 
-                change: '+4%',
-                iconColor: 'text-green-600' 
+              {
+                icon: <Users />,
+                label: 'Active Borrowers',
+                value: stats.activeBorrowers,
+                iconColor: 'text-green-600'
               },
-              { 
-                icon: <TrendingUp />, 
-                label: 'Interest Charged', 
-                value: stats.monthlyInterest, 
-                change: '+2.5%',
-                iconColor: 'text-purple-600' 
+              {
+                icon: <TrendingUp />,
+                label: 'Interest Charged',
+                value: stats.monthlyInterest,
+                iconColor: 'text-purple-600'
               },
-              { 
-                icon: <Calendar />, 
-                label: 'Due Payments', 
-                value: stats.duePayments, 
-                change: '-3%',
-                iconColor: 'text-red-600' 
+              {
+                icon: <Calendar />,
+                label: 'Due Payments',
+                value: stats.duePayments,
+                iconColor: 'text-red-600'
               }
             ].map((item, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`
                   ${currentTheme.card} 
-                  rounded-xl p-4 md:p-6 
+                  rounded-lg p-3 md:p-4 
                   ${currentTheme.shadow}
                   border ${currentTheme.border}
                   transform transition-all 
                   hover:-translate-y-1 hover:scale-[1.02]
+                  ${statCardFont}
                 `}
               >
                 <div className="flex items-center justify-between">
@@ -286,7 +305,7 @@ const Dashboard = () => {
                     <p className={`text-xs md:text-sm ${currentTheme.text.secondary}`}>
                       {item.label}
                     </p>
-                    <p className={`text-lg md:text-2xl font-semibold mt-1 ${currentTheme.text.primary}`}>
+                    <p className={`text-lg md:text-xl font-semibold mt-1 ${currentTheme.text.primary}`}>
                       {typeof item.value === 'number' ? formatUGX(item.value) : item.value}
                     </p>
                   </div>
@@ -296,17 +315,32 @@ const Dashboard = () => {
                     })}
                   </div>
                 </div>
-                <p className={`
-                  text-xs md:text-sm mt-2 
-                  ${item.change.startsWith('-') 
-                    ? 'text-red-500' 
-                    : 'text-green-500'}
-                `}>
-                  {item.change} from last month
-                </p>
               </div>
             ))}
           </div>
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="overflow-y-auto">
+              <BorrowersCard darkMode={darkMode} isLoading={isLoading} />
+            </div>
+            <div className="overflow-y-auto">
+              <PrincipalAdvancedCard darkMode={darkMode} />
+            </div>
+            <div className="overflow-y-auto">
+              <InterestChargeCard darkMode={darkMode} />
+            </div>
+            <div className="overflow-y-auto">
+              <DuePaymentsCard darkMode={darkMode} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="overflow-y-auto">
+              <h2 className={`text-lg font-semibold ${currentTheme.text.primary}`}>
+                Recent Transactions
+              </h2>
+              <RecentTransaction />
+            </div>
+          </div>
+
 
           {/* Filters Section */}
           <Filters onFilterChange={handleFilterChange} darkMode={darkMode} />
@@ -320,9 +354,9 @@ const Dashboard = () => {
               <BadDebtorsCard darkMode={darkMode} filteredDebtorss={filteredDebtors} />
             </div>
           </div>
-            {/* Loan Disbursements Over Time */}
-<LoanDisbursementsOverTime darkMode={darkMode} />
-<br />
+          {/* Loan Disbursements Over Time */}
+          <LoanDisbursementsOverTime darkMode={darkMode} />
+          <br />
           {/* Asset Distribution */}
           <div className={`
             ${currentTheme.card} 
@@ -346,29 +380,29 @@ const Dashboard = () => {
                     dataKey="value"
                   >
                     {pieData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={COLORS[index % COLORS.length]} 
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
                       />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: darkMode ? '#1F2937' : 'white', 
-                      color: darkMode ? 'white' : 'black' 
-                    }} 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#1F2937' : 'white',
+                      color: darkMode ? 'white' : 'black'
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap justify-center gap-4 mt-4">
                 {pieData.map((entry, index) => (
-                  <div 
-                    key={`legend-${index}`} 
+                  <div
+                    key={`legend-${index}`}
                     className="flex items-center"
                   >
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: COLORS[index] }} 
+                    <div
+                      className="w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: COLORS[index] }}
                     />
                     <span className={`text-xs md:text-sm ${currentTheme.text.secondary}`}>
                       {entry.name}
@@ -378,9 +412,9 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-{/* Interest Earned Over Time */}
-<InterestEarnedOverTime darkMode={darkMode} />
-<br />
+          {/* Interest Earned Over Time */}
+          <InterestEarnedOverTime darkMode={darkMode} />
+          <br />
           {/* Monthly Details Card */}
           <MonthlyDetailsCard darkMode={darkMode} />
         </main>

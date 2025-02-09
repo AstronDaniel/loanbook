@@ -44,6 +44,12 @@ import {
 import { format, isAfter, isBefore, parseISO } from "date-fns";
 import { getFirestore, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { app } from "../firebase"; // Adjust the path as necessary
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+import { getAuth } from 'firebase/auth';
+import { addDoc, collection } from 'firebase/firestore';
+
+const MySwal = withReactContent(Swal);
 
 const db = getFirestore(app);
 
@@ -123,6 +129,20 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
     return errors;
   };
 
+  const logTransaction = async (type, content) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const transactionLog = {
+      user: user ? user.email : 'anonymous',
+      timestamp: new Date().toISOString(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      time: new Date().toLocaleTimeString(),
+      type,
+      content
+    };
+    await addDoc(collection(db, 'transactionLogs'), transactionLog);
+  };
+
   const handleNewPayment = async () => {
     const errors = validateTransaction();
     if (errors.length > 0) {
@@ -138,11 +158,6 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
     try {
       setLoading(true);
       setTransactionInProgress(true);
-      // Replace this part in handleNewPayment:
-      const lastRecord =
-        debtor.monthlyRecords[debtor.monthlyRecords.length - 1];
-
-      // With this:
       // First, sort the existing records by date
       const sortedRecords = [...debtor.monthlyRecords].sort(
         (a, b) => new Date(a.date) - new Date(b.date)
@@ -196,83 +211,41 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
           : debtor.status
       };
 
-      await onUpdateDebtor(updatedDebtor);
+      // Check if the debtor document exists before updating
+      const debtorDocRef = doc(db, 'debtors', debtor.id);
+      const debtorDoc = await getDoc(debtorDocRef);
+      if (debtorDoc.exists()) {
+        await onUpdateDebtor(updatedDebtor);
+        // Log the transaction
+        await logTransaction('add', {
+          reference: Math.random().toString(36).substring(2, 15),
+          status: 'added',
+          description: `Added transaction for ${debtor.customerName}`,
+          notes: `Added transaction for ${debtor.customerName} with principal advance UGX ${newPayment.principalAdvance}, principal paid UGX ${newPayment.principalPaid}, interest charge UGX ${newPayment.interestCharge}, interest paid UGX ${newPayment.interestPaid}`
+        });
 
-      resetForm();
-      setSnackbar({
-        open: true,
-        message: "Transaction added successfully",
-        severity: "success",
-      });
+        resetForm();
+        setSnackbar({
+          open: true,
+          message: "Transaction added successfully",
+          severity: "success",
+        });
 
-      // Auto-switch to Monthly Records tab to show the new transaction
-      setTimeout(() => setActiveTab(1), 1000);
+        // Auto-switch to Monthly Records tab to show the new transaction
+        setTimeout(() => setActiveTab(1), 1000);
+      } else {
+        throw new Error(`Debtor document with ID ${debtor.id} does not exist.`);
+      }
     } catch (error) {
-      // Rollback the transaction by removing the new record
-      const updatedRecords = debtor.monthlyRecords.filter(
-        (record) => record.id !== newRecord.id
-      );
-      const lastRecord = updatedRecords[updatedRecords.length - 1];
-      const updatedDebtor = {
-        ...debtor,
-        monthlyRecords: updatedRecords,
-        currentOpeningPrincipal: lastRecord.outstandingPrinciple,
-        currentOpeningInterest: lastRecord.outstandingInterest,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      await onUpdateDebtor(updatedDebtor);
-
+      console.error('Error adding transaction:', error);
       setSnackbar({
         open: true,
-        message:
-          "Error adding transaction: " + (error.message || "Unknown error"),
+        message: "Error adding transaction: " + (error.message || "Unknown error"),
         severity: "error",
       });
     } finally {
       setLoading(false);
       setTransactionInProgress(false);
-    }
-  };
-
-  const handleRollback = async () => {
-    if (debtor.monthlyRecords.length <= 1) {
-      setSnackbar({
-        open: true,
-        message: 'No transactions to roll back',
-        severity: 'error'
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const updatedRecords = debtor.monthlyRecords.slice(0, -1);
-      const lastRecord = updatedRecords[updatedRecords.length - 1];
-
-      const updatedDebtor = {
-        ...debtor,
-        monthlyRecords: updatedRecords,
-        currentOpeningPrincipal: lastRecord.outstandingPrinciple,
-        currentOpeningInterest: lastRecord.outstandingInterest,
-        lastUpdated: new Date().toISOString()
-      };
-
-      await onUpdateDebtor(updatedDebtor);
-
-      setSnackbar({
-        open: true,
-        message: 'Transaction rolled back successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Error rolling back transaction: ' + (error.message || 'Unknown error'),
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -284,7 +257,11 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
     try {
       setLoading(true);
       const updatedRecords = debtor.monthlyRecords.map(record =>
-        record.id === editRecord.id ? editRecord : record
+        record.id === editRecord.id ? {
+          ...editRecord,
+          outstandingPrinciple: editRecord.openingPrinciple + editRecord.principleAdvance - editRecord.principlePaid,
+          outstandingInterest: editRecord.openingInterest + editRecord.interestCharge - editRecord.intrestPaid
+        } : record
       );
 
       const updatedDebtor = {
@@ -300,13 +277,28 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
           : debtor.status
       };
 
-      await onUpdateDebtor(updatedDebtor);
-      setEditRecord(null);
-      setSnackbar({
-        open: true,
-        message: 'Record updated successfully',
-        severity: 'success'
-      });
+      // Check if the debtor document exists before updating
+      const debtorDocRef = doc(db, 'debtors', debtor.id);
+      const debtorDoc = await getDoc(debtorDocRef);
+      if (debtorDoc.exists()) {
+        await onUpdateDebtor(updatedDebtor);
+        // Log the transaction
+        await logTransaction('update', {
+          reference: Math.random().toString(36).substring(2, 15),
+          status: 'updated',
+          description: `Updated transaction for ${debtor.customerName}`,
+          notes: `Updated transaction for ${debtor.customerName} with principal advance UGX ${editRecord.principleAdvance}, principal paid UGX ${editRecord.principlePaid}, interest charge UGX ${editRecord.interestCharge}, interest paid UGX ${editRecord.intrestPaid}`
+        });
+
+        setEditRecord(null);
+        setSnackbar({
+          open: true,
+          message: 'Record updated successfully',
+          severity: 'success'
+        });
+      } else {
+        throw new Error(`Debtor document with ID ${debtor.id} does not exist.`);
+      }
     } catch (error) {
       setSnackbar({
         open: true,
@@ -318,27 +310,67 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
     }
   };
 
-  const handleDeleteDebtor = async () => {
-    if (!debtor) return;
+  const handleDeleteRecord = async (recordId) => {
+    const result = await MySwal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!',
+      backdrop: true // Ensure the backdrop is enabled
+    });
 
-    try {
-      setLoading(true);
-      await deleteDoc(doc(db, 'debtors', debtor.id));
-      onDeleteDebtor(debtor.id);
-      setSnackbar({
-        open: true,
-        message: 'Debtor deleted successfully',
-        severity: 'success'
-      });
-      onClose();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Error deleting debtor: ' + (error.message || 'Unknown error'),
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
+    if (result.isConfirmed) {
+      try {
+        setLoading(true);
+        const updatedRecords = debtor.monthlyRecords.filter(record => record.id !== recordId);
+        const lastRecord = updatedRecords[updatedRecords.length - 1];
+
+        const updatedDebtor = {
+          ...debtor,
+          monthlyRecords: updatedRecords,
+          currentOpeningPrincipal: lastRecord ? lastRecord.outstandingPrinciple : 0,
+          currentOpeningInterest: lastRecord ? lastRecord.outstandingInterest : 0,
+          lastUpdated: new Date().toISOString(),
+          status: lastRecord && lastRecord.outstandingPrinciple === 0 && lastRecord.outstandingInterest === 0
+            ? 'completed'
+            : new Date() > new Date(loanDueDate) && (lastRecord.outstandingPrinciple > 0 || lastRecord.outstandingInterest > 0)
+            ? 'overdue'
+            : debtor.status
+        };
+
+        // Check if the debtor document exists before updating
+        const debtorDocRef = doc(db, 'debtors', debtor.id);
+        const debtorDoc = await getDoc(debtorDocRef);
+        if (debtorDoc.exists()) {
+          await onUpdateDebtor(updatedDebtor);
+          // Log the transaction
+          await logTransaction('delete', {
+            reference: Math.random().toString(36).substring(2, 15),
+            status: 'deleted',
+            description: `Deleted transaction for ${debtor.customerName}`,
+            notes: `Deleted transaction for ${debtor.customerName} with record ID ${recordId}`
+          });
+
+          setSnackbar({
+            open: true,
+            message: 'Transaction deleted successfully',
+            severity: 'success'
+          });
+        } else {
+          throw new Error(`Debtor document with ID ${debtor.id} does not exist.`);
+        }
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: 'Error deleting transaction: ' + (error.message || 'Unknown error'),
+          severity: 'error'
+        });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -663,6 +695,15 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
                           >
                             Edit
                           </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteRecord(record.id)}
+                            sx={{ ml: 1 }}
+                          >
+                            Delete
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -877,44 +918,6 @@ const DebtorDetailModal = ({ open, onClose, debtor, onUpdateDebtor, onDeleteDebt
                         }}
                       >
                         {loading ? "Saving Transaction..." : "Save Transaction"}
-                      </Button>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Button
-                        variant="contained"
-                        color="secondary"
-                        fullWidth
-                        onClick={handleRollback}
-                        disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-                        sx={{
-                          py: 1.5,
-                          transition: 'transform 0.2s',
-                          '&:not(:disabled):hover': {
-                            transform: 'translateY(-2px)'
-                          }
-                        }}
-                      >
-                        Rollback Last Transaction
-                      </Button>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        fullWidth
-                        onClick={handleDeleteDebtor}
-                        disabled={loading}
-                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-                        sx={{
-                          py: 1.5,
-                          transition: 'transform 0.2s',
-                          '&:not(:disabled):hover': {
-                            transform: 'translateY(-2px)'
-                          }
-                        }}
-                      >
-                        Delete Debtor
                       </Button>
                     </Grid>
                   </Grid>

@@ -33,7 +33,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { format } from 'date-fns';
 import Sidebar from '../components/SideBar'; // Adjust the path as necessary
 import Header from '../components/Header';   // Adjust the path as necessary
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { app } from '../firebase';
 
 const db = getFirestore(app);
@@ -134,7 +135,7 @@ const CapitalContributions = () => {
         const data = doc.data();
         const month = format(new Date(data.date), 'yyyy-MM');
         if (!acc[month]) acc[month] = {};
-        acc[month][data.investorId] = data.amount;
+        acc[month][data.investorId] = { ...data, contributionId: doc.id };
         return acc;
       }, {});
       setContributions(contributionsData);
@@ -143,6 +144,26 @@ const CapitalContributions = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const logTransaction = async (type, content, investor) => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    const transactionLog = {
+      user: user ? user.email : 'anonymous',
+      timestamp: new Date().toISOString(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+      time: new Date().toLocaleTimeString(),
+      type,
+      content: {
+        reference: Math.random().toString(36).substring(2, 15),
+        status: type === 'add' ? 'added' : type === 'delete' ? 'deleted' : 'updated',
+        transferFee: content.amount,
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} contribution of UGX ${content.amount.toLocaleString()} for ${investor.name}`,
+        notes: `${user ? user.email : 'anonymous'} ${type} contribution for investor ${investor.name} with amount UGX ${content.amount.toLocaleString()}`
+      }
+    };
+    await addDoc(collection(db, 'transactionLogs'), transactionLog);
   };
 
   const handleAddInvestor = async () => {
@@ -190,6 +211,10 @@ const CapitalContributions = () => {
       setSelectedInvestorForContribution('');
       setContributionAmount('');
       setSnackbar({ open: true, message: 'Contribution added successfully', severity: 'success' });
+
+      // Log the transaction
+      const investor = investors.find(inv => inv.id === selectedInvestorForContribution);
+      await logTransaction('add', contributionData, investor);
     } catch (error) {
       console.error('Error adding contribution:', error);
       setSnackbar({ open: true, message: 'Error adding contribution', severity: 'error' });
@@ -200,12 +225,12 @@ const CapitalContributions = () => {
 
   const calculateLifetimeTotal = (investorId) => {
     return Object.values(contributions).reduce((total, monthData) => {
-      return total + (monthData[investorId] || 0);
+      return total + (monthData[investorId]?.amount || 0);
     }, 0);
   };
 
   const getMonthTotal = (month) => {
-    return Object.values(contributions[month] || {}).reduce((a, b) => a + b, 0);
+    return Object.values(contributions[month] || {}).reduce((a, b) => a + b.amount, 0);
   };
 
   const handleDateChange = (newDate) => {
@@ -215,20 +240,36 @@ const CapitalContributions = () => {
 
   const handleSaveContribution = async () => {
     if (editingContribution && newAmount) {
+      
       setLoading(true);
       try {
-        const contributionDoc = doc(db, 'contributions', editingContribution.id);
-        await updateDoc(contributionDoc, { amount: parseFloat(newAmount.replace(/,/g, '')) });
+        console.log("edit: ",editingContribution)
+        const contributionDocRef = doc(db, 'contributions', editingContribution.contributionId);
+        await updateDoc(contributionDocRef, { 
+          amount: parseFloat(newAmount.replace(/,/g, ''))
+        });
 
-        // Refresh the contributions data
+        // Update local state
         setContributions(prev => ({
           ...prev,
           [selectedMonth]: {
             ...prev[selectedMonth],
-            [editingContribution.id]: parseFloat(newAmount.replace(/,/g, ''))
+            [editingContribution.investorId]: {
+              ...prev[selectedMonth][editingContribution.investorId],
+              amount: parseFloat(newAmount.replace(/,/g, ''))
+            }
           }
         }));
         
+        // Get investor data for logging
+        const investor = investors.find(inv => inv.id === editingContribution.investorId);
+        
+        // Log the transaction
+        await logTransaction('update', {
+          amount: parseFloat(newAmount.replace(/,/g, '')),
+          date: editingContribution.date
+        }, investor);
+
         setEditingContribution(null);
         setNewAmount("");
         setSnackbar({ open: true, message: 'Contribution updated successfully', severity: 'success' });
@@ -261,7 +302,7 @@ const CapitalContributions = () => {
 
   const chartData = Object.entries(contributions).map(([month, data]) => ({
     month: format(new Date(month + '-01'), 'MMM yyyy'),
-    total: Object.values(data).reduce((a, b) => a + b, 0)
+    total: Object.values(data).reduce((a, b) => a + b.amount, 0)
   }));
 
   return (
@@ -469,13 +510,18 @@ const CapitalContributions = () => {
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Typography variant="h6" sx={{ fontFamily: 'monospace' }}>
-                                UGX {(contributions[selectedMonth]?.[investor.id] || 0).toLocaleString()}
+                                UGX {(contributions[selectedMonth]?.[investor.id]?.amount || 0).toLocaleString()}
                               </Typography>
                               <IconButton
                                 size="small"
                                 onClick={() => {
-                                  setEditingContribution(investor);
-                                  setNewAmount(contributions[selectedMonth]?.[investor.id] || "");
+                                  const contribution = contributions[selectedMonth]?.[investor.id];
+                                  setEditingContribution({
+                                    ...contribution,
+                                    investorId: investor.id,
+                                    name: investor.name // include name for display purposes
+                                  });
+                                  setNewAmount(contribution?.amount?.toString() || "");
                                 }}
                               >
                                 <Edit />
@@ -661,7 +707,7 @@ const CapitalContributions = () => {
                             Current Month
                           </Typography>
                           <Typography variant="h6">
-                            UGX {(contributions[selectedMonth]?.[selectedInvestor?.id] || 0).toLocaleString()}
+                            UGX {(contributions[selectedMonth]?.[selectedInvestor?.id]?.amount || 0).toLocaleString()}
                           </Typography>
                         </Grid>
                       </Grid>
