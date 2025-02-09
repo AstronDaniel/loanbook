@@ -64,7 +64,7 @@ const RecentTransaction = () => {
           <div class="mb-3 pb-3 border-b border-gray-700">
             <div class="flex justify-between mb-2">
               <span class="text-gray-400">Reference:</span>
-              <span class="text-white font-medium">${transaction.content.reference}</span>
+              <span class="text-white font-medium">${transaction.content.reference || 'N/A'}</span>
             </div>
             <div class="flex justify-between mb-2">
               <span class="text-gray-400">User:</span>
@@ -72,7 +72,7 @@ const RecentTransaction = () => {
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">Status:</span>
-              <span class="text-green-400">${transaction.content.status}</span>
+              <span class="text-green-400">${transaction.content.status || 'N/A'}</span>
             </div>
           </div>
 
@@ -87,7 +87,7 @@ const RecentTransaction = () => {
               { label: 'Annual Card Fee', value: transaction.content.annualDebitCardFee },
               { label: 'Withholding Tax', value: transaction.content.withholdingTax },
               { label: 'Airtime & Data', value: transaction.content.airtimeAndData }
-            ].map(({ label, value }) => value !== 0 ? `
+            ].map(({ label, value }) => value !== undefined ? `
               <div class="flex justify-between">
                 <span class="text-gray-400">${label}:</span>
                 <span class="text-blue-400">UGX ${value.toLocaleString()}</span>
@@ -98,7 +98,7 @@ const RecentTransaction = () => {
           <!-- Description -->
           <div class="mt-3 pt-3 border-t border-gray-700">
             <span class="text-gray-400">Description:</span>
-            <p class="text-white mt-1">${transaction.content.description}</p>
+            <p class="text-white mt-1">${transaction.content.description || 'N/A'}</p>
           </div>
 
           <!-- Notes if any -->
