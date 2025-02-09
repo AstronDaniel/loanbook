@@ -261,7 +261,7 @@ const Dashboard = () => {
           }
         `}>
           {/* Stats Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[
               {
                 icon: <Wallet />,
@@ -317,7 +317,7 @@ const Dashboard = () => {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="overflow-y-auto">
               <BorrowersCard darkMode={darkMode} isLoading={isLoading} />
