@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
@@ -12,20 +12,31 @@ const firebaseConfig = {
   measurementId: "G-E4EZZMYL1R"
 };
 
-let firebaseInstance = null;
-let dbInstance = null;
-let authInstance = null;
+let app;
+let db;
+let auth;
 
-try {
-    firebaseInstance = initializeApp(firebaseConfig);
-    dbInstance = getFirestore(firebaseInstance);
-    authInstance = getAuth(firebaseInstance);
-} catch (error) {
-    if (!/already exists/.test(error.message)) {
-        console.error('Firebase initialization error', error.stack);
+const initializeFirebase = async () => {
+    try {
+        if (!getApps().length) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApps()[0];
+        }
+        
+        db = getFirestore(app);
+        auth = getAuth(app);
+        
+        return { app, db, auth };
+    } catch (error) {
+        console.error('Firebase initialization error:', error);
+        throw error;
     }
-}
+};
 
-export const app = firebaseInstance;
-export const db = dbInstance;
-export const auth = authInstance;
+// Initialize Firebase immediately
+const firebaseInstance = initializeFirebase();
+
+// Export promise-based instances
+export const getFirebaseInstances = async () => await firebaseInstance;
+export { app, db, auth };
