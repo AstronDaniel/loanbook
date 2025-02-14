@@ -1,21 +1,20 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-
-
+import { getFirestore } from 'firebase/firestore';
+import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID,
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyD6SYd8P5KXBNHHRt5ghpG6NZv9lSbkdX4",
+  authDomain: "loanbook-8f8ef.firebaseapp.com",
+  projectId: "loanbook-8f8ef",
+  storageBucket: "loanbook-8f8ef.firebasestorage.app",
+  messagingSenderId: "596133435755",
+  appId: "1:596133435755:web:dbb483887ea9b7891b942e",
+  measurementId: "G-E4EZZMYL1R"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-// const db=getFirestore(app);
-
-export { app, auth };
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const analytics = getAnalytics(app);
+export { app };
