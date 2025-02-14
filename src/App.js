@@ -16,10 +16,11 @@ import RetainedEarnings from './pages/RetainedEarnings';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import BalanceSheet from './pages/BalanceSheet';
+import { AuthProvider } from './contexts/AuthContext';
 
 const App = () => {
   return (
-    <>
+    <AuthProvider>
       <CssBaseline />
       <Router>
         <div className="App">
@@ -40,7 +41,7 @@ const App = () => {
           </Routes>
         </div>
       </Router>
-    </>
+    </AuthProvider>
   );
 };
 
