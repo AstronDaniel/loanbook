@@ -12,8 +12,20 @@ const firebaseConfig = {
   measurementId: "G-E4EZZMYL1R"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);  // Pass app instance explicitly
-const auth = getAuth(app);     // Pass app instance explicitly
+let firebaseInstance = null;
+let dbInstance = null;
+let authInstance = null;
 
-export { db, auth };
+try {
+    firebaseInstance = initializeApp(firebaseConfig);
+    dbInstance = getFirestore(firebaseInstance);
+    authInstance = getAuth(firebaseInstance);
+} catch (error) {
+    if (!/already exists/.test(error.message)) {
+        console.error('Firebase initialization error', error.stack);
+    }
+}
+
+export const app = firebaseInstance;
+export const db = dbInstance;
+export const auth = authInstance;
