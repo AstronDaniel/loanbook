@@ -14,6 +14,8 @@ import {
   SheetIcon,
 } from 'lucide-react';
 
+import logo from './images/logo512.jpg';
+
 const Sidebar = ({ isSidebarOpen, toggleSidebar, darkMode }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -74,7 +76,7 @@ const Sidebar = ({ isSidebarOpen, toggleSidebar, darkMode }) => {
               transition-colors duration-300
             `}>
               <img 
-                src="/favicon.ico" 
+                src={logo} 
                 alt="Logo" 
                 className="h-full w-full object-cover transform transition-transform group-hover:scale-110" 
               />
